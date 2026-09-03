@@ -1,0 +1,31 @@
+1
+00:00:00,000 --> 00:00:12,000
+This is RAI, Robot Agent Interface: a browser experiment where a person can watch an AI build a robot arm, then learn to control it through WebMCP.
+
+2
+00:00:12,500 --> 00:00:32,000
+In Build mode, the agent has fifteen authoring tools. It loads the synthetic Arm 101 teaching rig, configures its camera, places a practice can, and defines the visible task. The rig already includes its simulated gripper. These actions update the same three-dimensional scene the person sees.
+
+3
+00:00:32,500 --> 00:00:52,000
+Now the agent begins a blind trial. The can moves to an unknown reachable placement, authoring locks, and the rules change. All nineteen tools remain discoverable, but only four can be used: observe the arm camera, read basic arm telemetry, send joint and gripper outputs, or end the trial.
+
+4
+00:00:52,500 --> 00:01:14,000
+The camera observation is deliberately limited. It provides camera settings and normalized image-space detections, but no object IDs, world coordinates, distances, endpoint position, or hidden goal state. Telemetry provides joint positions, limits, and gripper state. There is no inverse-kinematics shortcut during the trial.
+
+5
+00:01:14,500 --> 00:01:34,000
+The agent observes, chooses direct joint targets, and closes the gripper. The person sees that action and its consequence appear in the same timeline. If the first move is incomplete, the agent has to observe again and use the changed frame to correct its next output.
+
+6
+00:01:34,500 --> 00:01:48,500
+That retry is the point of the product. The interface exposes Observe, Sense, Act, Retry, and Result as visible steps, so the viewer can follow what evidence the agent had and how its behavior changed.
+
+7
+00:01:49,000 --> 00:02:03,000
+When the agent ends the trial, Build mode unlocks and the human-facing result remains available. WebMCP provides reliable structured control without hiding the attempt process in a separate backend.
+
+8
+00:02:03,500 --> 00:02:24,000
+RAI is an Isaac-Sim-inspired research sandbox, not a physics or hardware claim. Camera detections use an analytic ideal-pinhole model, and the simulated gripper uses kinematic capture, rotation, carry, and release. It does not prove contact dynamics, gravity, torque, or movement by the physical desk arm.
