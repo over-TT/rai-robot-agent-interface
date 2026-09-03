@@ -1,4 +1,4 @@
-name: Verify Robot Workbench
+name: Verify RAI
 
 on:
   push:
