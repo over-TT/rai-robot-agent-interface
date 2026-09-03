@@ -25,7 +25,8 @@ Build Arm 101 → Begin trial → Observe → Sense → Act → Observe → Retr
 - [x] Human and agent actions reach the same visible scene and activity timeline.
 - [x] Local in-app Browser discovered exactly 19 tools.
 - [x] A local native trial completed the restricted observe/sense/act/retry loop.
-- [ ] Retain a direct `PHASE_LOCKED` negative-call receipt.
+- [x] A 12-seed Operate-only sweep produced 12/12 first-try grasps, 12/12 camera-confirmed tips, and 12/12 post-end hidden goal checks.
+- [x] A direct native `PHASE_LOCKED` negative-call receipt retained revision 15 and returned no hidden state.
 - [ ] Repeat discovery and the trial on the final public deployment.
 
 **Demo emphasis:** Show a Build-only read or edit becoming locked immediately after the trial starts, then complete the next decision using only the four Operate tools.
@@ -40,10 +41,10 @@ Build Arm 101 → Begin trial → Observe → Sense → Act → Observe → Retr
 - [x] Kinematic object capture, carry, rotation, and release.
 - [x] Visible phase, attempt stages, shared camera/scene, and human-facing result.
 - [x] Human controls remain available when native WebMCP is unavailable.
-- [ ] Current TypeScript check passes.
-- [ ] Current automated test count and result recorded.
-- [ ] Current production build result and transformed-module count recorded.
-- [ ] Current production bundle loads without application-console errors.
+- [x] Current TypeScript check passes (`tsc -b`).
+- [x] Current automated tests pass: 61/61 in 10/10 files.
+- [x] Current production build passes with 612 transformed modules.
+- [x] Current clean local production bundle loads without application-console errors.
 - [ ] 390 px viewport acceptance check completed.
 
 **Demo emphasis:** Keep the scene, camera, phase, and timeline on screen. The person should understand what happened without reading raw JSON.
@@ -55,7 +56,7 @@ Build Arm 101 → Begin trial → Observe → Sense → Act → Observe → Retr
 - [x] Broad Build mode supports more than one fixed pose or canned animation.
 - [x] Blind Operate mode creates a useful research constraint rather than an unrestricted scene editor.
 - [x] Attempts and corrections remain visible to the person.
-- [ ] Record a short example where a first action is incomplete and a later observation causes a meaningful correction.
+- [x] Local native run retained a bounded multi-observation correction: camera-frame long-axis angle changed from 96.393° to 41.017°.
 - [ ] Validate that a first-time viewer can explain the loop after the demo without extra narration.
 
 **Claim discipline:** Arm 101 is a synthetic teaching rig. It is not a digital twin of the user's physical Arm Alliance hardware, whose installed hardware may differ.
@@ -66,7 +67,8 @@ Build Arm 101 → Begin trial → Observe → Sense → Act → Observe → Retr
 - [x] The restriction is enforced in the product, not only in a prompt.
 - [x] The AI's intermediate attempts are treated as the experience, not hidden implementation detail.
 - [x] The same page combines experiment authoring, constrained control, visual playback, and a human-readable trace.
-- [ ] Capture a trial where the visible retry is clearly driven by a changed camera observation.
+- [x] Local native trial captured a visible observation-driven retry and a 25-event human timeline.
+- [x] Reliability sweep exposed an honest visual ambiguity: the centered final frame was inconclusive, and a ±35° side-view retry confirmed all 12 tips.
 
 **Demo emphasis:** The hook is “the AI loses privileged access and has to look again,” not “the page has many controls.”
 
@@ -121,11 +123,11 @@ Run this sequence in a fresh judging-browser origin and copy exact receipts into
 | Deliverable | Current status | Required proof |
 | --- | --- | --- |
 | Public live app | Pending | HTTPS URL works through judging path and while signed out |
-| Native WebMCP | Source implemented; runtime pending | 19 discovered tools, correct phase behavior, completed constrained trial |
-| Public source repository | Pending | Public signed-out access, source, setup, assets, visible license |
-| Automated gate | Pending current rerun | Exact typecheck, test, and build results on submitted commit |
-| Video | Script/caption draft present | Public YouTube, audio, captions, under three minutes |
-| English description | Drafted | Matches actual final build and evidence |
+| Native WebMCP | Passed locally; hosted repeat pending | 19 discovered tools, correct phase behavior, completed constrained trial |
+| Public source repository | Public URL available | [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface) |
+| Automated gate | Passed locally | TypeScript passed; 61/61 tests in 10 files; production build passed with 612 transformed modules |
+| Video | Exact shot list, narration, and caption draft present | Public YouTube, audio, captions, under three minutes |
+| English description | Copy-ready | Paste from `submission-assets/devpost-copy.md` after filling public URLs |
 | Challenge-period provenance | Present in project; public check pending | `NEW_WORK.md` and dated public history |
 | Free access through judging | Pending | Hosting remains available through September 21, 2026 at 5:00 PM PDT |
 
@@ -142,6 +144,7 @@ Run this sequence in a fresh judging-browser origin and copy exact receipts into
 2. Complete one clean native-browser trial from revision zero.
 3. Inspect every locked response for accidental coordinates, goal state, endpoint data, or other leakage.
 4. Capture a visible first attempt and correction.
-5. Deploy the exact verified commit and repeat the short acceptance flow on public HTTPS.
-6. Record the final video and retime captions to its audio.
-7. Verify every link while signed out before submission.
+5. Show why the centered view is ambiguous, then use the ±35° side view as camera evidence.
+6. Deploy the exact verified commit and repeat the short acceptance flow on public HTTPS.
+7. Record the final video and retime captions to its audio.
+8. Verify every link while signed out before submission.

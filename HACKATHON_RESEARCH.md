@@ -39,7 +39,7 @@ The focused product includes:
 - A shared 3D scene, camera view, trial status, and visible attempt timeline.
 - A human-usable interface when WebMCP is unavailable.
 
-Final browser discovery, automated checks, production build output, and hosted acceptance remain evidence tasks. [NATIVE_WEBMCP_EVIDENCE.md](./NATIVE_WEBMCP_EVIDENCE.md) intentionally leaves those results pending until they are rerun on the merged source.
+Current local evidence records native discovery of all 19 tools, a completed constrained Arm 101 trial, a passing TypeScript check, 61/61 passing tests in 10/10 files, and a successful production build with 612 transformed modules. Submitted-commit identity, public hosting, and signed-out acceptance remain pending; see [NATIVE_WEBMCP_EVIDENCE.md](./NATIVE_WEBMCP_EVIDENCE.md) for the exact receipts and proof boundaries.
 
 ### Potential Impact
 

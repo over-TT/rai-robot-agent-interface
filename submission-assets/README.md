@@ -1,6 +1,14 @@
 # RAI Arm 101 demo capture package
 
-This folder contains the spoken script and draft captions for the current Arm 101 submission story. The intended cut is about two minutes and twenty seconds, leaving useful margin below the challenge's three-minute limit.
+This folder contains the copy-and-capture package for the current Arm 101 submission story. The planned cut is **2:18**, leaving 42 seconds below the challenge's three-minute limit.
+
+## Files
+
+- [`devpost-copy.md`](./devpost-copy.md) — title, eight tested tagline directions, final tagline, short description, full description, and URL slots.
+- [`demo-shot-list.md`](./demo-shot-list.md) — exact 2:18 screen sequence and capture checklist.
+- [`narration.txt`](./narration.txt) — final 2:18 pacing script.
+- [`captions.srt`](./captions.srt) — caption draft aligned to the planned cut.
+- [`judging-instructions.md`](./judging-instructions.md) — short reproduction path and expected results.
 
 The text and timings are source assets, not proof that the final audio or video has been generated. Regenerate the narration after the product and copy are frozen, measure the resulting track, and retime the captions to that exact recording.
 
@@ -14,7 +22,7 @@ powershell -ExecutionPolicy Bypass -File scripts/generate-demo-narration.ps1
 
 The helper creates the ignored local file `submission-assets/rai-narration.wav` from `narration.txt`. It uses local Windows text-to-speech and does not open the microphone or upload anything.
 
-Any older WAV in this folder predates the Arm 101 script and must be replaced before recording. Voice choice changes timing, so do not claim a final duration until the regenerated file is measured. `captions.srt` is a draft pacing guide and must be retimed to the final track.
+Any older WAV in this folder predates the final RAI script and must be replaced before recording. Voice choice changes timing, so **2:18 is the edit plan, not measured audio proof**, until the regenerated file is measured. Retiming `captions.srt` to the final voice track is still required.
 
 ## Capture sequence
 
@@ -41,8 +49,8 @@ Any older WAV in this folder predates the Arm 101 script and must be replaced be
 
 ## Final checks
 
-- [ ] Narration regenerated from the current `narration.txt`.
-- [ ] Audio duration measured and below three minutes with room for edits.
+- [x] Narration regenerated from the current `narration.txt` as the ignored local file `rai-narration.wav`.
+- [x] Audio measured at **1:54.895**, leaving 23.105 seconds inside the planned 2:18 cut and 65.105 seconds below the three-minute limit.
 - [ ] `captions.srt` retimed and proofread against the final audio.
 - [ ] Video shows native WebMCP tool use, not only human clicking.
 - [ ] Tool discovery count and phase behavior match the submitted build.

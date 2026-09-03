@@ -7,13 +7,15 @@ This file separates current evidence from older product directions. Do not copy 
 ## Evidence summary
 
 - **Proven locally:** the in-app Browser discovered 19 native tools at `http://127.0.0.1:4199/`; an agent completed the Arm 101 trial through the restricted observation/action interface; the human UI showed a successful released-can result and a 25-event Run timeline; direct native negative calls proved the Build-state read and an out-of-range output leave revision 15 unchanged.
-- **Not yet proven:** the final automated build, exact submitted commit, public HTTPS behavior, signed-out access, or physical robot movement.
+- **Proven by the current automated gate:** TypeScript passed; 61/61 tests passed in 10/10 files; the production build passed with 612 transformed modules.
+- **Not yet proven:** the exact submitted commit, public HTTPS behavior, signed-out access, or physical robot movement.
 
 ## Build identity
 
 | Field | Current receipt |
 | --- | --- |
 | Git commit | **[PENDING]** |
+| Public source repository | [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface) |
 | Verification date/time and zone | September 3, 2026 at 18:26 CEST (UTC+02:00) |
 | URL | `http://127.0.0.1:4199/` — local loopback, not hosted proof |
 | Browser/app | In-app Browser; exact version **[PENDING]** |
@@ -78,6 +80,20 @@ Human-visible result at the end:
 
 The camera angles above are image-plane orientation observations, not world poses. In the current API, 0 degrees is image-horizontal and 90 degrees is image-vertical; `longAxisLengthNormalized` supplies the corresponding normalized projected length. The length values were not retained in this run summary and are not reconstructed here. The UI goal and 79.6-degree tilt are human-visible simulator state; they were not supplied to the operating agent as a success oracle.
 
+## 12-seed Operate-only reliability sweep
+
+A separate sweep repeated the constrained policy across 12 deterministic seeds. After each trial began, arm operation used only the permitted camera, telemetry, output, and end contract.
+
+| Measure | Result |
+| --- | --- |
+| First-try gripper capture | **12/12** |
+| Camera-confirmed tip | **12/12** |
+| Post-end hidden goal audit | **12/12** |
+| Camera long-axis change | **39.5°–42.6°** |
+| Mean direct output calls | **8 per trial** |
+
+The centered final view was visually ambiguous: projection could not reliably distinguish the tipped state from that viewpoint. The policy therefore made a **±35° side-view retry** and used that new camera frame to confirm all 12 tips. The post-end hidden goal check was a separate audit after control ended; it was never available to the operating agent as an input or success oracle.
+
 ## Closed-loop audit
 
 - [x] The agent used `observe_arm_camera` for camera evidence.
@@ -123,7 +139,7 @@ After the successful run, a second native audit entered Operate at revision 15 w
 | Required security/feature headers | **[PENDING]** |
 | Full constrained trial completes | **[PENDING]** |
 | Narrow viewport remains usable | **[PENDING]** |
-| Public repository and license visible | **[PENDING]** |
+| Public source repository | [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface) |
 | Public YouTube video, audio, captions, under 3 minutes | **[PENDING]** |
 
 ## Evidence boundary

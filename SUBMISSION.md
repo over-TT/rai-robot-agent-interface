@@ -5,7 +5,19 @@ RAI — Robot Agent Interface — is ready to present as one focused story: an A
 ## Submission identity
 
 - **Public name:** RAI — Robot Agent Interface
-- **Tagline:** Watch an AI build an arm, then learn through its camera.
+- **Tagline:** Build the arm. Then take away the map.
+- **Public source repository:** [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface)
+
+## Current proof snapshot
+
+- Local native discovery: **19 tools**.
+- Capability split: **15 Build tools / exactly 4 Operate tools**.
+- Restricted camera trial: **96.393° upright → 41.017° tipped** in image space.
+- Human-visible result: **released at 79.6°; Done**.
+- 12-seed Operate-only sweep: **12/12 first-try grasps**, **12/12 camera-confirmed tips**, **12/12 post-end hidden goal checks**, **39.5–42.6° camera-axis change**, and **8 output calls on average**.
+- Automated gate: TypeScript passed; **61/61 tests in 10 files**; production build passed with **612 transformed modules**.
+
+The centered final view was ambiguous in the sweep; a **±35° side-view retry** supplied the camera confirmation. Hosted and public-video proof remain pending.
 
 ## What must be submitted
 
@@ -22,11 +34,11 @@ Keep the app free through judging, which ends **September 21, 2026 at 5:00 PM PD
 ## Owner checklist
 
 - [x] Set the public name to **RAI — Robot Agent Interface**.
-- [ ] Confirm the final tagline.
-- [ ] Run the final `npm run check` gate and copy its exact TypeScript, test, and build results into [NATIVE_WEBMCP_EVIDENCE.md](./NATIVE_WEBMCP_EVIDENCE.md).
+- [x] Confirm the final tagline.
+- [x] Run the final `npm run check` gate and copy its exact TypeScript, test, and build results into [NATIVE_WEBMCP_EVIDENCE.md](./NATIVE_WEBMCP_EVIDENCE.md).
 - [x] Complete a local native-WebMCP Arm 101 trial through only the four Operate tools.
 - [ ] Repeat the evidence run on the final submitted commit and public deployment.
-- [ ] Publish this folder as the public repository root and confirm the license is visible while signed out.
+- [x] Publish this folder as the public repository root and confirm anonymous HTTP access to both the repository and MIT license.
 - [ ] Confirm `NEW_WORK.md` and dated Git history provide challenge-period provenance.
 - [ ] Confirm the repository's verification workflow passes from a locked `npm ci` install.
 - [ ] Deploy the production build to public HTTPS. ChatGPT Sites is allowed; another static host is also acceptable.
@@ -35,9 +47,10 @@ Keep the app free through judging, which ends **September 21, 2026 at 5:00 PM PD
 - [ ] Repeat 19-tool discovery against the final public deployment.
 - [ ] Confirm all 15 Build tools work before a trial and become safely locked during a trial.
 - [x] Confirm locally that the four Operate tools work during a trial: `observe_arm_camera`, `get_arm_telemetry`, `set_arm_outputs`, and `end_arm_trial`.
-- [ ] Record a visible miss or incomplete action, observation, correction, and result without using hidden coordinates or a semantic shortcut.
+- [x] Record a local visible observation, correction, and result without using hidden coordinates or a semantic shortcut.
 - [ ] Test reload persistence and a 390 px narrow viewport on the deployed URL.
-- [ ] Regenerate narration, record the demo, and retime the draft captions to the final audio.
+- [x] Regenerate narration from the frozen script and measure it at **1:54.895**.
+- [ ] Record the demo and retime the draft captions to the final audio.
 - [ ] Upload the video publicly to YouTube and verify signed-out playback, speech audio, captions, and duration under three minutes.
 - [ ] Add the live URL, public repository, video, and English description to Devpost.
 - [ ] Recheck all three public links while signed out.
@@ -46,18 +59,9 @@ Keep the app free through judging, which ends **September 21, 2026 at 5:00 PM PD
 
 No local build command publishes or mutates a remote service.
 
-## Recommended demo — about two minutes
+## Recommended demo — exact 2:18 cut
 
-Keep the shared 3D scene, camera view, trial status, and activity timeline visible. Give the agent the task once; do not steer it with canvas clicks.
-
-1. **0:00–0:15 — Establish the premise.** Show that the page exposes a fixed 19-tool WebMCP catalog and that the person and agent share one scene.
-2. **0:15–0:35 — Build Arm 101.** Let the agent load the starter arm, inspect its editable joints and links, configure the camera, place the practice can, and set the visible goal. Arm 101 already includes its simulated gripper. Briefly say that 15 tools are available in Build.
-3. **0:35–0:48 — Start the blind trial.** Call `begin_arm_trial`. The can is reset to an unknown reachable placement. Point out that scene authoring is now locked.
-4. **0:48–1:08 — Observe.** Let the agent call `observe_arm_camera` and `get_arm_telemetry`. The observation contains normalized camera detections and joint/gripper state, not world coordinates, object IDs, endpoint position, or the hidden goal.
-5. **1:08–1:30 — Act and inspect the result.** Send joint and gripper targets through `set_arm_outputs`, then observe again. Let the first attempt be visibly imperfect if it is; that makes the closed loop legible.
-6. **1:30–1:48 — Retry.** Use the new camera frame and telemetry to make a materially corrected move. Show the shared timeline progressing through Observe → Sense → Act → Observe → Retry.
-7. **1:48–2:02 — End.** Call `end_arm_trial`. It returns the phase only; the human-facing goal result was visible throughout and remains on screen while Build tools unlock again.
-8. **2:02–2:15 — State the boundary.** Explain that the camera observation is analytic ideal-pinhole data and the grasp/rotate/release behavior is kinematic. This is a browser research sandbox, not contact dynamics or physical-robot proof.
+Use [submission-assets/demo-shot-list.md](./submission-assets/demo-shot-list.md) as the canonical timeline, [submission-assets/narration.txt](./submission-assets/narration.txt) for voiceover, and [submission-assets/captions.srt](./submission-assets/captions.srt) for the caption draft. The cut shows discovery, Build, the capability lock, restricted observation and telemetry, direct outputs, an observation-driven correction, the released result, and the honest kinematic boundary.
 
 ### Copy-ready agent task
 

@@ -1,15 +1,17 @@
-This is RAI, Robot Agent Interface: a browser experiment where a person can watch an AI build a robot arm, then learn to control it through WebMCP.
+This is RAI, Robot Agent Interface. An agent gets a robot arm. Then it loses the map.
 
-In Build mode, the agent has fifteen authoring tools. It loads the synthetic Arm 101 teaching rig, configures its camera, places a practice can, and defines the visible task. The rig already includes its simulated gripper. These actions update the same three-dimensional scene the person sees.
+In Build, WebMCP gives the agent fifteen authoring tools. It loads Arm 101: a synthetic serial arm with a camera, gripper, practice can, and visible goal. Every change appears in the same three-dimensional scene the person sees.
 
-Now the agent begins a blind trial. The can moves to an unknown reachable placement, authoring locks, and the rules change. All nineteen tools remain discoverable, but only four can be used: observe the arm camera, read basic arm telemetry, send joint and gripper outputs, or end the trial.
+Then the agent starts a blind trial. The can moves to an unknown reachable placement. All nineteen tools remain discoverable, but only four still work: observe the camera, read arm telemetry, send joint and gripper outputs, or end the trial.
 
-The camera observation is deliberately limited. It provides camera settings and normalized image-space detections, but no object IDs, world coordinates, distances, endpoint position, or hidden goal state. Telemetry provides joint positions, limits, and gripper state. There is no inverse-kinematics shortcut during the trial.
+Here is the boundary working. A Build-only scene request returns PHASE LOCKED and no hidden state. The operating agent gets normalized image-space detections, joint positions, limits, and gripper state—no object IDs, world coordinates, distances, inverse kinematics, or success oracle.
 
-The agent observes, chooses direct joint targets, and closes the gripper. The person sees that action and its consequence appear in the same timeline. If the first move is incomplete, the agent has to observe again and use the changed frame to correct its next output.
+The first camera observation sees the can nearly upright, with a long-axis angle of 96.393 degrees. The agent changes joint targets, closes the gripper, rotates the wrist, and releases.
 
-That retry is the point of the product. The interface exposes Observe, Sense, Act, Retry, and Result as visible steps, so the viewer can follow what evidence the agent had and how its behavior changed.
+It does not get to call “tip can.” The centered final frame is ambiguous, so the agent moves to a thirty-five-degree side view. That retry measures 41.017 degrees: visibly tipped in the image.
 
-When the agent ends the trial, Build mode unlocks and the human-facing result remains available. WebMCP provides reliable structured control without hiding the attempt process in a separate backend.
+The person sees the whole attempt as Observe, Sense, Act, Retry, and Result. The final interface reports the can released at 79.6 degrees and the goal Done. The operating agent never received that human-facing result as a shortcut.
 
-RAI is an Isaac-Sim-inspired research sandbox, not a physics or hardware claim. Camera detections use an analytic ideal-pinhole model, and the simulated gripper uses kinematic capture, rotation, carry, and release. It does not prove contact dynamics, gravity, torque, or movement by the physical desk arm.
+RAI turns agent control into something a person can inspect, not just an answer from a hidden backend.
+
+RAI is a deterministic kinematic research sandbox—not a full physics engine or physical-robot claim. It does not prove force, friction, gravity, torque, or sim-to-real transfer.

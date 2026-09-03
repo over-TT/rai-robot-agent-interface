@@ -1,5 +1,7 @@
 # RAI — Robot Agent Interface
 
+> **Build the arm. Then take away the map.**
+
 RAI is a browser robotics interface where a person can watch an AI build and operate a camera-equipped arm. Its **Arm 101** scene includes a synthetic serial arm, a wide camera, a parallel gripper, a practice can, and a visible task result.
 
 The WebMCP surface has two deliberate phases:
@@ -10,6 +12,17 @@ The WebMCP surface has two deliberate phases:
 This makes the attempt inspectable without giving the agent a semantic shortcut. During a trial it cannot read object coordinates, query the goal state, call inverse kinematics, edit the scene, name an object to grasp, or invoke an outcome-specific action. The person sees the same arm, camera view, and visible Observe → Sense → Act → Observe → Retry → Result trail.
 
 This folder is isolated from the physical Arm Alliance stack. It does **not** contact a Raspberry Pi, send servo commands, or prove anything about the desk arm.
+
+## Current verified proof
+
+- Native WebMCP discovery found all **19 registered tools**.
+- Build exposes **15 authoring tools**; Operate permits exactly **4 constrained tools**.
+- A local native-WebMCP trial changed the can's camera-frame long-axis angle from **96.393° upright to 41.017° tipped**.
+- The human-visible result showed the can **released at 79.6°** with the goal marked **Done**.
+- A 12-seed Operate-only sweep achieved **12/12 first-try grasps**, **12/12 camera-confirmed tips**, and **12/12 post-end hidden goal checks**, averaging **8 output calls**. The camera-axis change ranged from **39.5° to 42.6°**.
+- The automated gate passed **61/61 tests in 10 files**, TypeScript, and a production build of **612 transformed modules**.
+
+The centered final camera view was ambiguous across the reliability sweep, so the agent used a **±35° side-view retry** to confirm each tip. These are local receipts, not hosted or physical-robot proof. The public source repository is [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface). Hosted verification remains pending.
 
 ## Run locally
 
@@ -113,4 +126,4 @@ A successful visible result proves only the state of this browser simulation. Ar
 
 URDF export preserves supported serial-chain primitive visuals, joint axes, origins, and limits in metres/radians. It omits cameras, scene objects, current joint positions, meshes, collision geometry, inertial data, transmissions, and actuator claims.
 
-See [HACKATHON_RESEARCH.md](./HACKATHON_RESEARCH.md) for sources, [HACKATHON_SCORECARD.md](./HACKATHON_SCORECARD.md) for the criteria map, [NEW_WORK.md](./NEW_WORK.md) for challenge-period provenance, and [SUBMISSION.md](./SUBMISSION.md) for the owner-controlled launch checklist and demo script.
+See [HACKATHON_RESEARCH.md](./HACKATHON_RESEARCH.md) for sources, [HACKATHON_SCORECARD.md](./HACKATHON_SCORECARD.md) for the criteria map, [NEW_WORK.md](./NEW_WORK.md) for challenge-period provenance, and [SUBMISSION.md](./SUBMISSION.md) for the launch checklist. The copy-ready Devpost entry, exact demo cut, narration, captions, and judging instructions live in [submission-assets](./submission-assets/README.md).
