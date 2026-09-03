@@ -1,130 +1,110 @@
-# RAI — Robot Agent Interface
+# RAI
 
-> **Build the arm. Then take away the map.**
+Robot Agent Interface. Build an arm in your browser, give an AI its controls, and watch what it actually does.
 
-RAI is a browser robotics interface where a person can watch an AI build and operate a camera-equipped arm. Its **Arm 101** scene includes a synthetic serial arm, a wide camera, a parallel gripper, a practice can, and a visible task result.
+[Open the website](https://arm-lab-camera-robot.overtt.chatgpt.site) · [Set up with AI](https://arm-lab-camera-robot.overtt.chatgpt.site/?setup=1) · [Tool reference](WEBMCP_TOOLS.md)
 
-The WebMCP surface has two deliberate phases:
+![RAI robot-arm concept render](public/rai-social.png)
 
-- **Build mode** exposes broad WebMCP authoring tools for serial arms, joints, links, cameras, primitive objects, goals, poses, and snapshots. JSON and URDF export remain human interface actions.
-- **Operate mode** begins with `begin_arm_trial`. The can is moved to a seeded, repeatable position after the broad scene read is locked. Exactly four tools remain usable: `observe_arm_camera`, `get_arm_telemetry`, `set_arm_outputs`, and `end_arm_trial`.
+*Concept render. The screenshots below show the actual app.*
 
-This makes the attempt inspectable without giving the agent a semantic shortcut. During a trial it cannot read object coordinates, query the goal state, call inverse kinematics, edit the scene, name an object to grasp, or invoke an outcome-specific action. The person sees the same arm, camera view, and visible Observe → Sense → Act → Observe → Retry → Result trail.
+## Why I made this
 
-This folder is isolated from the physical Arm Alliance stack. It does **not** contact a Raspberry Pi, send servo commands, or prove anything about the desk arm.
+I wanted to watch an agent do more than describe a robot move. Let it build an arm, put a camera on it, prepare a scene, and try something. Then make the attempt visible: what it observed, which controls it used, how long it waited, and what happened next.
 
-## Current verified proof
+The important bit is the boundary. While building, the agent can inspect and edit the scene. Once a run starts, it loses that map. It gets camera-frame observations and joint telemetry, and can send joint and gripper outputs. There is no `tip_the_can` function.
 
-- Native WebMCP discovery found all **19 registered tools**.
-- Build exposes **15 authoring tools**; Operate permits exactly **4 constrained tools**.
-- A local native-WebMCP trial changed the can's camera-frame long-axis angle from **96.393° upright to 41.017° tipped**.
-- The human-visible result showed the can **released at 79.6°** with the goal marked **Done**.
-- A 12-seed Operate-only sweep achieved **12/12 first-try grasps**, **12/12 camera-confirmed tips**, and **12/12 post-end hidden goal checks**, averaging **8 output calls**. The camera-axis change ranged from **39.5° to 42.6°**.
-- The automated gate passed **68/68 tests in 12 files**, TypeScript, and a production build of **613 transformed modules**.
+Arm 101 is the starter scene, not the whole idea.
 
-The centered final camera view was ambiguous across the reliability sweep, so the agent used a **±35° side-view retry** to confirm each tip. These are local receipts, not hosted or physical-robot proof. The public source repository is [over-TT/RAI](https://github.com/over-TT/RAI). Hosted verification remains pending.
+## Have a look
+
+![Actual RAI workbench](docs/media/workbench.jpg)
+
+Use the controls yourself, or choose **Set up with AI** to bring a compatible WebMCP agent to the page. Human controls and agent tools use the same validated command path.
+
+![Actual recorded WebMCP attempt](docs/media/agent-run.jpg)
+
+**Run** shows the recorded attempt, not a canned animation. Replay preserves the original wall-clock pauses at 1×. Click a step or use **Next** to inspect a moment. The camera inset follows the recorded arm pose. Recordings stay in that browser; a fresh browser starts empty.
+
+## How it works
+
+```mermaid
+flowchart LR
+    BUILD["Build<br/>Arm · camera · scene"] --> START["Start run<br/>Scene editing locks"]
+    START --> OBSERVE["Observe<br/>Camera-frame data"]
+    OBSERVE --> SENSE["Read joints<br/>and gripper"]
+    SENSE --> ACT["Set joint targets<br/>or gripper output"]
+    ACT --> OBSERVE
+    OBSERVE --> END["End run"]
+    END --> REPLAY["Replay the attempt<br/>Original timing + scene states"]
+```
+
+The page exposes 19 WebMCP tools. During a run, only these four work:
+
+| Tool | What the agent gets or does |
+| --- | --- |
+| `observe_arm_camera` | Structured camera-frame observations; no world coordinates |
+| `get_arm_telemetry` | Joint positions, limits, and gripper state |
+| `set_arm_outputs` | Bounded joint targets and open/close gripper commands |
+| `end_arm_trial` | Ends the attempt and unlocks Build mode |
+
+The other 15 return `PHASE_LOCKED`, including scene reads, inverse kinematics, and named-object grasping. [Full contract](WEBMCP_TOOLS.md).
+
+## What you can build without changing code
+
+- Serial arms with 1–8 joints: fixed, revolute, continuous, or prismatic.
+- Different link lengths, directions, radii, joint axes, limits, and base poses.
+- Mounted or world cameras with adjustable field of view and clipping range.
+- Scenes made from boxes, cylinders, spheres, and planes.
+- Joint sequences, task goals, saved snapshots, and JSON projects.
+
+Arm 101 includes a simple parallel gripper. Camera references include Raspberry Pi Camera Module 3 Standard/Wide, OAK-D Lite, and generic pinhole. These are simplified references, not vendor-accurate digital twins. Primitive-visual URDF export is available in the human interface.
 
 ## Run locally
 
-Requirements: Node.js `^20.19.0` or `>=22.12.0`. Node 22.12.0 is pinned for CI and hosting builds.
+You need Git and Node.js `^20.19.0 || >=22.12.0`. No API key, backend, or physical robot is needed.
 
-```powershell
+```sh
+git clone https://github.com/over-TT/RAI.git
+cd RAI
 npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:4176`.
+Open the URL Vite prints, normally `http://127.0.0.1:4176`. Add `/#workbench` to skip the home screen.
 
-Run the complete local gate:
-
-```powershell
+```sh
 npm run check
 ```
 
-Inspect the production bundle locally:
+That runs TypeScript, tests, and the production build. GitHub Actions runs the same gate. The public website is hosted on ChatGPT Sites.
 
-```powershell
-npm run preview -- --host 127.0.0.1 --port 4177
-```
+## Let an agent set it up
 
-Open `http://127.0.0.1:4177`. Development, preview, and the included hosting configuration set the WebMCP feature headers. When this folder becomes a standalone repository root, its GitHub Actions workflow runs `npm ci` and `npm run check` on pushes and pull requests.
+**[Open the setup handoff](https://arm-lab-camera-robot.overtt.chatgpt.site/?setup=1)** for a prepared ChatGPT prompt and an option to open the website beside a desktop chat. The link does not auto-send a message or grant tool access.
 
-## What it includes
+For repository work, start with [AGENTS.md](AGENTS.md), then follow [the full setup guide](docs/SETUP_WITH_AGENTS.md). It covers installation, discovery, Build, a constrained run, replay, and common failures.
 
-- The ready-to-run Arm 101 scene: serial arm, mounted wide camera, parallel gripper, upright practice can, and a human-visible tip goal
-- Agent-authored 1–8 joint serial robots using fixed, revolute, continuous, and prismatic joints
-- Editable joint limits, axes, origins, positions, link directions, lengths, radii, colors, and base pose
-- Camera references for a generic pinhole camera, Raspberry Pi Camera Module 3 Standard/Wide, and OAK-D Lite
-- Editable camera mount, field of view, clipping range, and reference resolution
-- Primitive scene authoring for boxes, spheres, cylinders, and planes
-- Human joint and gripper controls that use the same validated command path as WebMCP
-- Multi-waypoint joint sequences, undo/redo, local persistence, named snapshots, JSON export/import, and primitive visual URDF export
-- A live agent trail with an exact run clock, clearly labeled steps, and persisted 1× scene replay using the original wall-clock gaps
-- A focused home screen and compact agent handoff that frame Arm 101 as one starter demo, not the limit of the workbench
-- Phase-aware WebMCP registration with strict schemas, runtime validation, optimistic revision checks, retry deduplication, and cancellation handling
+Ordinary ChatGPT web chat is not automatically connected to this page. Check the current [official OpenAI Site Tools guide](https://learn.chatgpt.com/docs/webmcp).
 
-Reference robots and cameras are simplified primitives. They do not include vendor CAD meshes, calibrated optics, or hardware behavior.
+## What this proves—and what it doesn't
 
-## Arm 101 loop
+RAI is a small research workbench, not an Isaac Sim replacement.
 
-1. In Build mode, load Arm 101 or create a custom serial arm.
-2. Edit its joints and links, mount a camera, and prepare the scene. Arm 101 already includes a simulated gripper; Build mode can test a named grasp but does not configure gripper hardware.
-3. Call `begin_arm_trial` with `randomizeCan: true`. The simulator moves the can using a deterministic seed and locks every Build-mode read and mutation.
-4. Call `observe_arm_camera`. It returns camera-frame structured detections from an ideal-pinhole projection, without object IDs, world positions, distances, or goal coordinates. For can-like cylinders it also reports the projected long-axis angle and normalized length; 0 degrees is image-horizontal and 90 degrees is image-vertical.
-5. Call `get_arm_telemetry`. It returns joint positions and limits plus gripper state, without environment or goal state.
-6. Call `set_arm_outputs` with bounded joint targets and/or `open`, `close`, or `unchanged` gripper output. It does not accept an object ID or Cartesian target.
-7. Observe again. The person sees the same camera and the complete action trail while the agent corrects its next output.
-8. Call `end_arm_trial` when the visual evidence is sufficient or further progress is not useful. This unlocks Build mode without returning hidden task state.
+- Motion uses deterministic kinematics. There is no gravity, contact-force, friction, torque, or grasp-stability solver.
+- The gripper captures nearby eligible primitives within a fixed 45 mm surface-clearance envelope. It carries them rigidly; released objects remain at their simulated pose.
+- The agent receives analytic ideal-pinhole detections, not rendered pixels or learned vision. The visible camera follows the published +Y-image-right convention; it is not a physical camera stream.
+- Replay stores tool-event timing and scene snapshots, not video or hidden reasoning. Up to six runs and 120 events per run are retained locally.
+- No Raspberry Pi connection or real servo motion happens here.
 
-## WebMCP catalog
+The [evidence log](NATIVE_WEBMCP_EVIDENCE.md) separates automated tests, local native-WebMCP attempts, and hosted checks. Previous local trials include a can tip/release and a 12-seed sweep; these are simulation results. [Screenshot provenance](docs/media/README.md).
 
-The page registers a fixed catalog of **19 tools** through the current imperative `document.modelContext.registerTool()` API. All 19 remain discoverable in both phases so the boundary is explicit rather than hidden.
+## Challenge material
 
-Build mode has 15 usable tools:
+[Research](HACKATHON_RESEARCH.md) · [Criteria map](HACKATHON_SCORECARD.md) · [Submission checklist](SUBMISSION.md) · [Demo script](submission-assets/README.md) · [New-work provenance](NEW_WORK.md)
 
-- `list_robotics_presets`
-- `get_simulation_state`
-- `load_robot_preset`
-- `create_custom_robot`
-- `edit_robot_chain`
-- `set_joint_positions`
-- `move_end_effector`
-- `configure_camera`
-- `edit_scene_objects`
-- `control_grasp`
-- `move_grasped_object`
-- `set_simulation_goal`
-- `run_joint_sequence`
-- `save_simulation_snapshot`
-- `begin_arm_trial`
+[MIT license](LICENSE).
 
-Operate mode has exactly four usable tools:
+---
 
-- `observe_arm_camera`
-- `get_arm_telemetry`
-- `set_arm_outputs`
-- `end_arm_trial`
-
-The other 15 return `PHASE_LOCKED` during a trial without returning their usual state. See [WEBMCP_TOOLS.md](./WEBMCP_TOOLS.md) for the exact contract and [NATIVE_WEBMCP_EVIDENCE.md](./NATIVE_WEBMCP_EVIDENCE.md) for the current verification template.
-
-## Testing WebMCP
-
-Use the latest ChatGPT desktop app and open the site in its built-in browser. ChatGPT Work and Codex can discover site tools. Select GPT-5.6 Sol or GPT-5.6 Terra; GPT-5.6 Luna currently has WebMCP disabled. Site tools are unavailable in Enterprise and Edu workspaces, and availability depends on rollout.
-
-As a fallback, use Chrome 149 or later, enable `chrome://flags/#enable-webmcp-testing`, restart Chrome, and open the app over `localhost` or HTTPS. Browser availability changes independently of this repository, so the page badge is the source of truth for the current session.
-
-These environment constraints were checked against the [official OpenAI Site Tools guide](https://learn.chatgpt.com/docs/webmcp), the [OpenAI challenge page](https://openai.com/webmcp-challenge/), and the [official Devpost rules](https://webmcp.devpost.com/rules) on September 3, 2026.
-
-## Honest simulation boundary
-
-RAI is inspired by the workflow of a robotics simulator; it is not an Isaac Sim replacement. Serial arms use deterministic forward kinematics. Build mode also offers bounded position-only inverse kinematics as an authoring aid, but that tool is locked during a blind trial.
-
-`observe_arm_camera` returns structured detections computed from ideal-pinhole projection of simulated primitives. It is not a rendered camera image, learned perception, calibrated optics, or physical sensor evidence. Camera distortion, exposure, autofocus, depth, rolling shutter, and noise are not modeled.
-
-Closing the trial gripper captures only the nearest eligible primitive inside a fixed 45 mm surface-clearance envelope. A captured object is rigidly attached to the virtual tool, rotates with it, and remains at its simulated pose when released. This is kinematic grasp/rotate/release—not general collision response, contact force, gravity-driven settling, payload dynamics, or grasp-stability proof.
-
-A successful visible result proves only the state of this browser simulation. Arm 101 is a synthetic teaching preset, not a digital twin of the physical Arm Alliance hardware; the physical rig currently has no installed gripper/tool actuator matching this simulated one. It does not prove actuator torque, collision-free motion, physical arrival, camera performance, or control of a real robot.
-
-URDF export preserves supported serial-chain primitive visuals, joint axes, origins, and limits in metres/radians. It omits cameras, scene objects, current joint positions, meshes, collision geometry, inertial data, transmissions, and actuator claims.
-
-See [HACKATHON_RESEARCH.md](./HACKATHON_RESEARCH.md) for sources, [HACKATHON_SCORECARD.md](./HACKATHON_SCORECARD.md) for the criteria map, [NEW_WORK.md](./NEW_WORK.md) for challenge-period provenance, and [SUBMISSION.md](./SUBMISSION.md) for the launch checklist. The copy-ready Devpost entry, exact demo cut, narration, captions, and judging instructions live in [submission-assets](./submission-assets/README.md).
+[Open RAI](https://arm-lab-camera-robot.overtt.chatgpt.site) · [Open ChatGPT + setup brief](https://arm-lab-camera-robot.overtt.chatgpt.site/?setup=1) · [Agent setup guide](docs/SETUP_WITH_AGENTS.md)

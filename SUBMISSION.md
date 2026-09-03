@@ -15,9 +15,9 @@ RAI — Robot Agent Interface — is ready to present as one focused story: an A
 - Restricted camera trial: **96.393° upright → 41.017° tipped** in image space.
 - Human-visible result: **released at 79.6°; Done**.
 - 12-seed Operate-only sweep: **12/12 first-try grasps**, **12/12 camera-confirmed tips**, **12/12 post-end hidden goal checks**, **39.5–42.6° camera-axis change**, and **8 output calls on average**.
-- Automated gate: TypeScript passed; **68/68 tests in 12 files**; production build passed with **613 transformed modules**.
+- Latest automated gate: TypeScript passed; **73/73 tests in 13 files**; production build passed with **615 transformed modules**.
 
-The centered final view was ambiguous in the sweep; a **±35° side-view retry** supplied the camera confirmation. Hosted and public-video proof remain pending.
+The centered final view was ambiguous in the sweep; a **±35° side-view retry** supplied the camera confirmation. [Public ChatGPT Sites hosting](https://arm-lab-camera-robot.overtt.chatgpt.site) and anonymous HTTP access are verified; a complete hosted trial and public video remain pending.
 
 ## What must be submitted
 

@@ -43,6 +43,10 @@ describe('run timeline', () => {
     expect(timelineEntryAt(run, 1_200).id).toBe('act')
     expect(timelineFrameAt(run, 1_000).scene.robot.name).toBe(sceneA.robot.name)
     expect(timelineFrameAt(run, 1_200)).toMatchObject({ gripperClosed: true, scene: { robot: { name: 'Moved robot' } } })
+    // Completed review holds the recorded final state even if the live scene changes.
+    sceneA.robot.name = 'Live build changed afterwards'
+    expect(timelineFrameAt(run, 2_500).scene.robot.name).toBe('Moved robot')
+    expect(timelineFrameAt(run, 9_000).scene.robot.name).toBe('Moved robot')
   })
 
   it('formats short and minute-scale run durations', () => {

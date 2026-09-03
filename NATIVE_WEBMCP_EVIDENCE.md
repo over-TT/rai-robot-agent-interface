@@ -1,6 +1,16 @@
 # RAI native WebMCP evidence
 
-**Status:** A successful local native-WebMCP Arm 101 trial and final automated gate are recorded below. Submitted-commit, public-hosting, and signed-out receipts remain pending.
+**Status:** Local native-WebMCP trials are recorded below. Public ChatGPT Sites hosting and anonymous HTTP access were verified September 3, 2026; a full hosted trial and submission video remain pending.
+
+## September 3 camera and replay update
+
+- Automated gate: **73 tests in 13 files**, TypeScript, and production build (**615 modules**) passed.
+- Repaired stretched sensor rendering, aligned the visible image with the published +Y-image-right observation convention, and shared domain quaternions for compound object rotations. Observation math and historical tool responses were not rewritten.
+- Replay now holds recorded scene states after completion, exposes clickable event timestamps and Next, and includes the camera at its recorded pose. Ended does not imply success. Home shows actual local recordings or an empty state, not a fictional receipt.
+- Retained local attempt: **18 WebMCP events, 188.2 seconds**. Timestamp seeking, Next, and replay were exercised in the browser. Screenshots: [workbench](docs/media/workbench.jpg), [attempt timeline](docs/media/agent-run.jpg).
+- Public site: [RAI on ChatGPT Sites](https://arm-lab-camera-robot.overtt.chatgpt.site). First public deployment succeeded from source `a4c1818f057f3a14328d75a76a562cd050f8d54b`; anonymous HTTP returned 200 with the RAI document. A Permissions-Policy response header was not observed; native hosted discovery is checked separately from header presence.
+
+Historical trial receipts below retain their original test counts and observations.
 
 This file separates current evidence from older product directions. Do not copy forward old test counts, module counts, revisions, physics results, or demo timings.
 
@@ -149,8 +159,8 @@ After the successful run, a second native audit entered Operate at revision 15 w
 
 | Check | Result |
 | --- | --- |
-| Public HTTPS URL | **[PENDING]** |
-| HTTP 200 while signed out | **[PENDING]** |
+| Public HTTPS URL | [Public ChatGPT Sites page](https://arm-lab-camera-robot.overtt.chatgpt.site) |
+| HTTP 200 while signed out | **Passed September 3, 2026** using an anonymous HTTP request |
 | Native discovery reports 19 tools | **[PENDING]** |
 | Required security/feature headers | **[PENDING]** |
 | Full constrained trial completes | **[PENDING]** |
@@ -160,7 +170,7 @@ After the successful run, a second native audit entered Operate at revision 15 w
 
 ## Evidence boundary
 
-This receipt proves a local in-app-Browser WebMCP run only. It does not prove the final production build, public hosting, signed-out access, or physical robot movement.
+The trial receipts prove local in-app-Browser WebMCP behavior. Public hosting and anonymous HTTP checks are separate; they do not establish a complete hosted trial or physical movement.
 
 Arm 101 is a synthetic simulator teaching rig, not a physical twin. `observe_arm_camera` returns analytic ideal-pinhole projections of simulated primitives rather than rendered pixels, learned detections, or physical camera data. The simulated gripper captures within a bounded kinematic envelope and carries, rotates, or releases an attached primitive. It does not model collision response, contact forces, friction, gravity, motor torque, or sim-to-real arrival.
 

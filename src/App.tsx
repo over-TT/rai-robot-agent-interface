@@ -21,11 +21,13 @@ import {
 } from './domain'
 import { installWebMcpTools, WEBMCP_TOOL_NAMES } from './webmcp'
 import { Icon, type IconName } from './components/Icon'
+import { AgentSetupDialog } from './components/AgentSetupDialog'
 import { RobotViewport, type ViewPreset } from './components/RobotScene'
 import { SensorViewport } from './components/SensorViewport'
 import { compactTime, degrees, mm, vectorMm } from './lib/format'
 import { formatRunDuration, timelineEntryAt, timelineFrameAt } from './lib/runTimeline'
 import { readSimulationImportFile } from './lib/simulationImport'
+import { RAI_REPOSITORY_URL } from './lib/agentHandoff'
 
 type Selection =
   | { kind: 'robot'; id: string }
@@ -39,7 +41,7 @@ type DockTab = 'pose' | 'camera' | 'activity'
 type WebMcpStatus = 'unavailable' | 'registering' | 'ready' | 'error'
 type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'complete'
 
-const AGENT_RUN_PROMPT = 'Use this page\u2019s WebMCP tools to inspect the current robot and task. You may build or load a robot, configure its joints, gripper, cameras, and scene, then start a camera-guided run with begin_arm_trial. During the run, use only observe_arm_camera, get_arm_telemetry, set_arm_outputs, and end_arm_trial. Work from camera observations and joint telemetry, make bounded outputs, and observe again after each change. End when the visible goal is complete or further progress is not useful. Report only what the camera proves.'
+const AGENT_RUN_PROMPT = 'Use this page\u2019s WebMCP tools to inspect the current robot and task. You may build or load a robot, configure its joints, cameras, and scene, then start a camera-guided run with begin_arm_trial. Preserve existing work unless I ask to replace it. During the run, use only observe_arm_camera, get_arm_telemetry, set_arm_outputs, and end_arm_trial. Work from structured camera-frame observations and joint telemetry, make bounded joint or gripper outputs, and observe again after each change. End when the observations support a conclusion or further progress is not useful. Do not read hidden goal state or use task shortcuts. Report what the observations establish and what remains uncertain.'
 
 function downloadTextFile(contents: string, mimeType: string, filename: string) {
   const url = URL.createObjectURL(new Blob([contents], { type: mimeType }))
@@ -822,17 +824,15 @@ function ViewportGoalChip({ onOpen }: { onOpen: () => void }) {
   )
 }
 
-function activityStage(action: string, status: 'ok' | 'error' | 'cancelled', retry = false):
+function activityStage(action: string, status: 'ok' | 'error' | 'cancelled'):
   { label: string; className: string; icon: IconName } {
   if (status === 'error') return { label: 'Blocked', className: 'error', icon: 'warning' }
   if (status === 'cancelled') return { label: 'Stopped', className: 'retry', icon: 'close' }
   if (action === 'observe_arm_camera') return { label: 'Observe', className: 'observe', icon: 'eye' }
   if (action === 'get_arm_telemetry') return { label: 'Sense', className: 'sense', icon: 'activity' }
-  if (action === 'set_arm_outputs') return retry
-    ? { label: 'Adjust', className: 'retry', icon: 'redo' }
-    : { label: 'Act', className: 'act', icon: 'joint' }
+  if (action === 'set_arm_outputs') return { label: 'Act', className: 'act', icon: 'joint' }
   if (action === 'begin_arm_trial') return { label: 'Start', className: 'start', icon: 'spark' }
-  if (action === 'end_arm_trial') return { label: 'Result', className: 'result', icon: 'check' }
+  if (action === 'end_arm_trial') return { label: 'Ended', className: 'result', icon: 'close' }
   return { label: 'Build', className: 'build', icon: 'layers' }
 }
 
@@ -851,13 +851,7 @@ function AgentRunPanel({
   onRestart: () => void
   onSeek: (elapsedMs: number) => void
 }) {
-  let outputCount = 0
-  const entries = (run?.events ?? []).map((entry) => {
-    if (entry.action === 'begin_arm_trial') outputCount = 0
-    const retry = entry.action === 'set_arm_outputs' && outputCount > 0
-    if (entry.action === 'set_arm_outputs') outputCount += 1
-    return { entry, stage: activityStage(entry.action, entry.status, retry) }
-  })
+  const entries = (run?.events ?? []).map((entry) => ({ entry, stage: activityStage(entry.action, entry.status) }))
   const agentCount = entries.filter(({ entry }) => entry.source === 'webmcp').length
   const durationMs = run?.durationMs ?? Math.max(run?.events.at(-1)?.elapsedMs ?? 0, elapsedMs)
   const recording = Boolean(run && !run.finishedAt)
@@ -869,7 +863,7 @@ function AgentRunPanel({
       : 'Replay at 1× speed'
   return (
     <div className="agent-run-panel">
-      <div className="activity-heading"><SectionTitle icon="activity" title="Agent run" count={agentCount} /><span>{recording ? 'Recording live' : run ? `Recorded ${formatRunDuration(durationMs)}` : 'Visible tool trail'}</span></div>
+      <div className="activity-heading"><SectionTitle icon="activity" title="Attempt timeline" count={agentCount} /><span>{recording ? 'Recording tool calls' : run ? `${formatRunDuration(durationMs)} elapsed` : 'No attempt recorded'}</span></div>
       {run ? (
         <div className="run-transport">
           <span className={`run-clock ${recording ? 'recording' : playbackStatus}`}><i />{recording ? 'REC' : playbackStatus === 'playing' ? 'PLAYING 1×' : 'REPLAY'}<strong>{formatRunDuration(elapsedMs)}<small> / {formatRunDuration(durationMs)}</small></strong></span>
@@ -886,9 +880,11 @@ function AgentRunPanel({
           {!recording ? <span className="run-playback-actions">
             <button type="button" onClick={onPlayPause} aria-label={playLabel} title={playLabel}><Icon name={playbackStatus === 'playing' ? 'pause' : 'play'} size={13} /><span>{playbackStatus === 'playing' ? 'Pause' : elapsedMs > 0 && elapsedMs < durationMs ? 'Resume' : 'Replay 1×'}</span></button>
             <button type="button" onClick={onRestart} aria-label="Restart replay" title="Restart replay"><Icon name="redo" size={13} /></button>
+            <button type="button" onClick={() => onSeek(entries.find(({ entry }) => entry.elapsedMs > elapsedMs)?.entry.elapsedMs ?? durationMs)} aria-label="Next recorded event" title="Skip to next event">Next</button>
           </span> : null}
         </div>
       ) : null}
+      {run ? <p className="run-evidence-note">Actual tool events · 1× keeps the original pauses · click a step to jump{run.events.length >= 120 ? ' · 120-event limit: earlier steps may be omitted' : ''}</p> : null}
       {entries.length === 0 ? (
         <div className="activity-empty"><span className="activity-empty-icon"><Icon name="activity" size={16} /></span><span><strong>No run yet</strong><small>Start an agent run to watch every attempt.</small></span></div>
       ) : (
@@ -897,11 +893,11 @@ function AgentRunPanel({
             const revealed = recording || entry.elapsedMs <= elapsedMs
             const current = currentEvent?.id === entry.id
             return (
-              <div className={`activity-row ${entry.status} ${revealed ? 'is-revealed' : 'is-future'} ${current ? 'is-current' : ''}`} key={entry.id} aria-current={current ? 'step' : undefined}>
+              <button type="button" disabled={recording} onClick={() => onSeek(entry.elapsedMs)} className={`activity-row ${entry.status} ${revealed ? 'is-revealed' : 'is-future'} ${current ? 'is-current' : ''}`} key={entry.id} aria-current={current ? 'step' : undefined} aria-label={`Jump to ${stage.label} at ${formatRunDuration(entry.elapsedMs)}`}>
                 <span className={`run-stage ${stage.className}`}><Icon name={stage.icon} size={12} />{stage.label}</span>
-                <span><strong>{entry.summary}</strong><small>{entry.source === 'webmcp' ? 'Agent' : entry.source === 'system' ? 'System' : 'Human'} · {compactTime(entry.at)} · r{entry.revision}</small></span>
+                <span><strong>{entry.summary}</strong><small>{entry.source === 'webmcp' ? 'WebMCP' : entry.source === 'system' ? 'System' : 'Human'} · {compactTime(entry.at)} · r{entry.revision}</small></span>
                 <time dateTime={`PT${entry.elapsedMs / 1_000}S`}>+{formatRunDuration(entry.elapsedMs)}</time>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -917,10 +913,7 @@ function AgentRunHud({ run, current, elapsedMs, playbackStatus, onOpen }: {
   playbackStatus: PlaybackStatus
   onOpen: () => void
 }) {
-  const priorOutputs = current?.action === 'set_arm_outputs'
-    ? run?.events.slice(0, run.events.findIndex((entry) => entry.id === current.id) + 1).filter((entry) => entry.source === 'webmcp' && entry.action === 'set_arm_outputs').length ?? 0
-    : 0
-  const stage = current ? activityStage(current.action, current.status, priorOutputs > 1) : undefined
+  const stage = current ? activityStage(current.action, current.status) : undefined
   const recording = Boolean(run && !run.finishedAt)
   const status = recording ? 'REC' : playbackStatus === 'playing' ? 'REPLAY 1×' : stage?.label ?? 'READY'
   return (
@@ -960,7 +953,8 @@ function OperationInspector() {
   )
 }
 
-function HomeScreen({ onOpen, webMcpStatus }: { onOpen: () => void; webMcpStatus: WebMcpStatus }) {
+function HomeScreen({ onOpen, onWatch, webMcpStatus, run }: { onOpen: () => void; onWatch: () => void; webMcpStatus: WebMcpStatus; run?: RecordedRun }) {
+  const [setupOpen, setSetupOpen] = useState(() => new URLSearchParams(window.location.search).get('setup') === '1')
   const toolState = webMcpStatus === 'ready'
     ? `${WEBMCP_TOOL_NAMES.length} tools ready`
     : webMcpStatus === 'registering'
@@ -972,31 +966,32 @@ function HomeScreen({ onOpen, webMcpStatus }: { onOpen: () => void; webMcpStatus
     <main className="home-screen">
       <nav className="home-nav" aria-label="RAI home">
         <span className="home-brand"><span className="home-brand-mark"><Icon name="arm" size={15} /></span><strong>RAI</strong><span>Robot Agent Interface</span></span>
-        <a href="https://github.com/over-TT/RAI" target="_blank" rel="noreferrer">GitHub ↗</a>
+        <a href={RAI_REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub ↗</a>
       </nav>
       <section className="home-hero">
         <div className="home-copy">
           <p className="home-kicker">WebMCP robotics workbench</p>
           <h2>Build the robot.<br />Watch the agent work.</h2>
-          <p className="home-lede">Design joints, grippers, cameras, and tasks in the browser. Give an agent bounded controls, then see every attempt live and replay the run at its real pace.</p>
+          <p className="home-lede">Build an arm, mount a camera, and set a task. Give an agent joint and gripper controls, then watch its attempts and replay them at their real pace.</p>
           <div className="home-actions">
             <button type="button" onClick={onOpen}>Open workbench</button>
+            <button type="button" onClick={() => setSetupOpen(true)}>Set up with AI</button>
           </div>
           <div className="home-proof" aria-label="Product capabilities">
             <span>{toolState}</span><span>Camera-limited runs</span><span>Timed 1× replay</span>
           </div>
         </div>
-        <div className="home-agent-card" aria-label="RAI recorded run preview">
-          <span className="home-agent-status"><em><i />Recorded run</em><strong>Agent work, made inspectable.</strong><small>Camera observations and joint outputs appear with their original timing.</small></span>
-          <div className="home-run-clock"><span>TRIAL 01</span><strong>00:18.4</strong><em>1×</em></div>
+        <div className="home-agent-card" aria-label="RAI attempt recording">
+          <span className="home-agent-status"><em><i />{run ? run.finishedAt ? 'Saved in this browser' : 'Run in progress' : 'No agent run yet'}</em><strong>{run ? 'Your latest attempt.' : 'Watch what the agent actually does.'}</strong><small>Tool calls and scene states, with their original timing. Not a scripted animation.</small></span>
+          <div className="home-run-clock"><span>{run ? `${run.events.length} EVENTS` : 'OBSERVE → ACT → CHECK'}</span><strong>{run ? formatRunDuration(run.durationMs ?? run.events.at(-1)?.elapsedMs ?? 0) : 'Your turn.'}</strong><em>{run ? '1×' : 'REC'}</em></div>
           <div className="home-mini-run" aria-label="Agent loop">
-            <div><span>Observe</span><strong>Camera evidence</strong><time>+0.0</time></div>
-            <div><span>Act</span><strong>Bounded controls</strong><time>+4.8</time></div>
-            <div><span>Result</span><strong>Goal evidence</strong><time>+18.4</time></div>
+            {run ? run.events.slice(-3).map((entry) => <div key={entry.id}><span>{activityStage(entry.action, entry.status).label}</span><strong>{entry.summary}</strong><time>+{formatRunDuration(entry.elapsedMs)}</time></div>) : <div><span>Start</span><strong>Connect an agent to record an attempt.</strong></div>}
           </div>
+          {run ? <button type="button" className="home-watch-run" onClick={onWatch}>{run.finishedAt ? 'Watch this attempt' : 'Watch live'} →</button> : null}
         </div>
       </section>
-      <footer className="home-footer"><span>Simulation only · no physical hardware control</span><span>BUILD → RUN → REPLAY</span></footer>
+      <footer className="home-footer"><span>Simulation only · no physical hardware control</span><nav aria-label="Project links"><a href={RAI_REPOSITORY_URL} target="_blank" rel="noreferrer">GitHub ↗</a><button type="button" onClick={() => setSetupOpen(true)}>Agent setup ↗</button></nav></footer>
+      <AgentSetupDialog open={setupOpen} onClose={() => setSetupOpen(false)} />
     </main>
   )
 }
@@ -1019,6 +1014,7 @@ export default function App() {
   const [dockOpen, setDockOpen] = useState(false)
   const [notice, setNotice] = useState<{ type: 'ok' | 'error'; text: string }>()
   const [agentBriefOpen, setAgentBriefOpen] = useState(false)
+  const [agentSetupOpen, setAgentSetupOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [webMcpStatus, setWebMcpStatus] = useState<WebMcpStatus>('registering')
   const [homeOpen, setHomeOpen] = useState(() => window.location.hash !== '#workbench')
@@ -1043,9 +1039,14 @@ export default function App() {
     if (playbackStatus !== 'playing' || !latestRun?.finishedAt) return
     const durationMs = latestRun.durationMs ?? latestRun.events.at(-1)?.elapsedMs ?? 0
     let frame = 0
+    let lastDisplayedTenth = -1
     const tick = (now: number) => {
       const nextElapsedMs = Math.min(durationMs, Math.max(0, now - playbackAnchor.current))
-      setPlaybackElapsedMs(nextElapsedMs)
+      const tenth = Math.floor(nextElapsedMs / 100)
+      if (tenth !== lastDisplayedTenth || nextElapsedMs >= durationMs) {
+        setPlaybackElapsedMs(nextElapsedMs)
+        lastDisplayedTenth = tenth
+      }
       if (nextElapsedMs >= durationMs) {
         setPlaybackStatus('complete')
         return
@@ -1065,7 +1066,7 @@ export default function App() {
   const replayFocused = replaying || runReviewFocused
   const visibleRunElapsedMs = replaying ? playbackElapsedMs : liveElapsedMs
   const currentRunEvent = latestRun ? timelineEntryAt(latestRun, visibleRunElapsedMs) : undefined
-  const playbackFrame = replaying && latestRun ? timelineFrameAt(latestRun, playbackElapsedMs) : undefined
+  const playbackFrame = replayFocused && latestRun?.finishedAt ? timelineFrameAt(latestRun, visibleRunElapsedMs) : undefined
   const displayScene = playbackFrame?.scene ?? state.scene
   const computed = useMemo(() => computeSceneKinematics(displayScene), [displayScene])
   const runFocused = operating || replayFocused
@@ -1263,10 +1264,10 @@ export default function App() {
     setPlaybackStatus('paused')
   }
 
-  if (homeOpen) return <HomeScreen onOpen={openWorkbench} webMcpStatus={webMcpStatus} />
+  if (homeOpen) return <HomeScreen onOpen={openWorkbench} onWatch={() => { openWorkbench(); openDock('activity'); if (latestRun?.finishedAt) restartRun() }} webMcpStatus={webMcpStatus} run={latestRun} />
 
   return (
-    <main className={`app-shell ${dockOpen ? 'dock-open' : 'dock-collapsed'} ${runFocused ? 'is-operating' : ''} ${replaying ? 'is-replaying' : ''}`}>
+    <main className={`app-shell ${dockOpen ? 'dock-open' : 'dock-collapsed'} ${runFocused ? 'is-operating' : ''} ${replaying ? 'is-replaying' : ''} ${dockOpen && dockTab === 'camera' ? 'camera-focused' : ''}`}>
       <a className="skip-link" href="#workbench-viewport">Skip to RAI simulator</a>
       <header className="app-header">
         <div className="brand-block">
@@ -1275,6 +1276,7 @@ export default function App() {
           <span className={`phase-badge ${runFocused ? 'operate' : 'build'}`}>{replayFocused ? 'SIM · REPLAY' : operating ? 'SIM · RUN' : 'SIM · BUILD'}</span>
         </div>
         <div className="header-actions">
+          <a className="header-github-link" href={RAI_REPOSITORY_URL} target="_blank" rel="noreferrer" aria-label="RAI on GitHub">GitHub ↗</a>
           <span aria-live="polite" className={`webmcp-badge ${webMcpStatus === 'ready' ? 'connected' : webMcpStatus === 'error' ? 'error' : 'fallback'}`} title={webMcpStatus === 'ready' ? `${WEBMCP_TOOL_NAMES.length} WebMCP tools are registered for this page.` : webMcpStatus === 'error' ? 'The browser exposed WebMCP, but registration failed.' : webMcpStatus === 'registering' ? 'Registering this page’s WebMCP tools.' : 'The full human interface works; open in a WebMCP-capable browser for agent tools.'}>
             <i />
             <span className="webmcp-label-full">{webMcpStatus === 'ready' ? 'Agent tools ready' : webMcpStatus === 'registering' ? 'Connecting' : webMcpStatus === 'error' ? 'WebMCP error' : 'Human mode'}</span>
@@ -1328,6 +1330,7 @@ export default function App() {
           onSelect={(kind, id) => setSelection({ kind, id } as Selection)}
         />
         <AgentRunHud run={latestRun} current={currentRunEvent} elapsedMs={visibleRunElapsedMs} playbackStatus={playbackStatus} onOpen={() => openDock('activity')} />
+        {runFocused && dockTab === 'activity' ? <div className="run-camera-preview"><span>{replayFocused ? 'Recorded camera pose' : 'Arm camera'} · simulated view</span><SensorViewport scene={displayScene} computed={computed} cameraId={state.operation?.cameraId ?? activeCameraId} gripperClosed={playbackFrame?.gripperClosed ?? state.operation?.gripper === 'closed'} /></div> : null}
         {!replayFocused ? <ViewportGoalChip onOpen={() => openDock('pose')} /> : null}
         <div className="viewport-meta"><span><i className="live-dot" />{replayFocused ? `RECORDED RUN · 1×` : operating ? `AGENT RUN · CAMERA-GUIDED` : `ARM SIM · ${state.scene.robot.joints.length} DOF`}</span></div>
         <div className="view-switcher">
@@ -1399,11 +1402,14 @@ export default function App() {
             <span><b>3</b><strong>Replay</strong><small>Every attempt</small></span>
           </div>
           <div className="agent-task-dialog-actions">
+            <button type="button" onClick={() => { agentBriefDialog.current?.close(); setAgentSetupOpen(true) }}>Agent setup</button>
             <button type="button" onClick={() => void copyAgentBrief()}>Copy agent brief</button>
             <button type="submit">Close</button>
           </div>
         </form>
       </dialog>
+
+      <AgentSetupDialog open={agentSetupOpen} onClose={() => setAgentSetupOpen(false)} />
 
       <dialog ref={resetDialog} className="agent-task-dialog reset-dialog" aria-labelledby="reset-dialog-title" onClose={() => setResetOpen(false)}>
         <form method="dialog">

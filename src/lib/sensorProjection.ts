@@ -3,6 +3,16 @@ const MAX_PERSPECTIVE_FOV_DEG = 179
 const MIN_PERSPECTIVE_ASPECT = 0.01
 const MAX_PERSPECTIVE_ASPECT = 100
 
+// Published sensor coordinates use local +Y as image-right; Three lookAt uses -Y.
+export const SENSOR_HORIZONTAL_SCALE = -1
+
+/** Contain the complete sensor image without stretching or cropping it. */
+export function fitSensorFrame(width: number, height: number, aspect: number) {
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
+  const fittedWidth = Math.max(0, Math.min(width, height * safeAspect))
+  return { width: fittedWidth, height: fittedWidth / safeAspect }
+}
+
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value))
 }

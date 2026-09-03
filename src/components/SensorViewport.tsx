@@ -1,8 +1,8 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import type { CameraSensor, ForwardKinematicsResult, SimulationScene } from '../domain'
-import { sensorPerspectiveFromFov } from '../lib/sensorProjection'
+import { fitSensorFrame, SENSOR_HORIZONTAL_SCALE, sensorPerspectiveFromFov } from '../lib/sensorProjection'
 import { SceneContent } from './RobotScene'
 
 function simToThree([x, y, z]: [number, number, number]): THREE.Vector3 {
@@ -65,6 +65,17 @@ export function SensorViewport({
 }) {
   const cameraSensor = scene.cameras.find((camera) => camera.id === cameraId) ?? scene.cameras[0]
   const frame = computed.cameras.find((candidate) => candidate.cameraId === cameraSensor?.id)
+  const stage = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    if (!stage.current) return
+    const observer = new ResizeObserver(([entry]) => {
+      setSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+    })
+    observer.observe(stage.current)
+    return () => observer.disconnect()
+  }, [cameraSensor?.id])
 
   if (!cameraSensor || !frame) {
     return (
@@ -79,10 +90,12 @@ export function SensorViewport({
     cameraSensor.projection.horizontalFovDeg,
     cameraSensor.projection.verticalFovDeg,
   )
+  const fitted = fitSensorFrame(size.width, size.height, perspective.aspect)
 
   return (
-    <div className="sensor-stage" aria-label={`Idealized view from ${cameraSensor.name}`}>
-      <Canvas role="img" aria-label={`Idealized pinhole rendering from ${cameraSensor.name}`} dpr={[1, 1.5]} camera={{ fov: perspective.verticalFovDeg, aspect: perspective.aspect, near: cameraSensor.projection.nearM, far: cameraSensor.projection.farM }}>
+    <div ref={stage} className="sensor-stage" aria-label={`Idealized view from ${cameraSensor.name}`}>
+      <div className="sensor-frame" style={fitted}>
+      <Canvas style={{ transform: `scaleX(${SENSOR_HORIZONTAL_SCALE})` }} role="img" aria-label={`Idealized pinhole rendering from ${cameraSensor.name}`} dpr={[1, 1.5]} camera={{ fov: perspective.verticalFovDeg, aspect: perspective.aspect, near: cameraSensor.projection.nearM, far: cameraSensor.projection.farM }}>
         <color attach="background" args={['#0b0d10']} />
         <ambientLight intensity={1.45} />
         <directionalLight position={[0.7, 1.2, 0.6]} intensity={2.4} />
@@ -93,6 +106,7 @@ export function SensorViewport({
       <div className="sensor-readout">
         <span>IDEAL PINHOLE</span>
         <span>{cameraSensor.projection.horizontalFovDeg}° × {cameraSensor.projection.verticalFovDeg}°</span>
+      </div>
       </div>
     </div>
   )

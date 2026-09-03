@@ -4,7 +4,9 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import {
   evaluateSimulationGoal,
+  transformMatrix,
   transformPoint,
+  worldPose,
   type CameraSensor,
   type ForwardKinematicsResult,
   type Quaternion,
@@ -220,7 +222,8 @@ function EndEffectorTool({ pose, closed }: { pose: WorldPose; closed: boolean })
 }
 
 function ObjectMesh({ object, selected, grasped, onSelect }: { object: SceneObject; selected: boolean; grasped: boolean; onSelect?: () => void }) {
-  const rotation = object.pose.rotationDeg.map((value) => THREE.MathUtils.degToRad(value)) as Vec3
+  // Share the domain's Rz * Ry * Rx transform, including compound rotations.
+  const quaternion = worldPose(transformMatrix(object.pose)).quaternionXyzw
   const material = (
     <meshStandardMaterial
       color={selected ? '#ffffff' : object.color}
@@ -239,7 +242,7 @@ function ObjectMesh({ object, selected, grasped, onSelect }: { object: SceneObje
         : <planeGeometry args={object.geometry.sizeM} />
 
   return (
-    <group position={object.pose.positionM} rotation={rotation}>
+    <group position={object.pose.positionM} quaternion={quaternion}>
       <mesh
         castShadow={object.geometry.type !== 'plane'}
         receiveShadow
