@@ -7,7 +7,7 @@ This file separates current evidence from older product directions. Do not copy 
 ## Evidence summary
 
 - **Proven locally:** the in-app Browser discovered 19 native tools at `http://127.0.0.1:4199/`; an agent completed the Arm 101 trial through the restricted observation/action interface; the human UI showed a successful released-can result and a 25-event Run timeline; direct native negative calls proved the Build-state read and an out-of-range output leave revision 15 unchanged.
-- **Proven by the current automated gate:** TypeScript passed; 61/61 tests passed in 10/10 files; the production build passed with 612 transformed modules.
+- **Proven by the current automated gate:** TypeScript passed; 68/68 tests passed in 12/12 files; the production build passed with 613 transformed modules.
 - **Not yet proven:** the exact submitted commit, public HTTPS behavior, signed-out access, or physical robot movement.
 
 ## Build identity
@@ -15,7 +15,7 @@ This file separates current evidence from older product directions. Do not copy 
 | Field | Current receipt |
 | --- | --- |
 | Git commit | **[PENDING]** |
-| Public source repository | [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface) |
+| Public source repository | [over-TT/RAI](https://github.com/over-TT/RAI) |
 | Verification date/time and zone | September 3, 2026 at 18:26 CEST (UTC+02:00) |
 | URL | `http://127.0.0.1:4199/` — local loopback, not hosted proof |
 | Browser/app | In-app Browser; exact version **[PENDING]** |
@@ -29,9 +29,9 @@ Run `npm run check` on the final source and paste exact output-derived facts.
 | Check | Result |
 | --- | --- |
 | TypeScript | Passed (`tsc -b`) |
-| Tests | Passed: 61/61 tests in 10/10 files |
+| Tests | Passed: 68/68 tests in 12/12 files |
 | Production build | Passed (`vite build`) |
-| Transformed modules | 612 |
+| Transformed modules | 613 |
 | Warnings | None from the final `npm run check` gate |
 
 ## Native discovery
@@ -79,6 +79,22 @@ Human-visible result at the end:
 - Visible Run timeline: **25 events**.
 
 The camera angles above are image-plane orientation observations, not world poses. In the current API, 0 degrees is image-horizontal and 90 degrees is image-vertical; `longAxisLengthNormalized` supplies the corresponding normalized projected length. The length values were not retained in this run summary and are not reconstructed here. The UI goal and 79.6-degree tilt are human-visible simulator state; they were not supplied to the operating agent as a success oracle.
+
+## Timed run and 1× replay receipt
+
+The current UI pass was exercised through the in-app Browser's native WebMCP capability at the same local URL. Trial `arm-trial-19` recorded **18 agent events** over **3:08.2** of real wall-clock time, including the external agent's reasoning gaps between completed calls.
+
+| Evidence | Local result |
+| --- | --- |
+| Initial camera observation | Partial cylinder detection; `longAxisAngleDeg` **145.936262**. |
+| Grasp telemetry | `holding: true` after the bounded close output. |
+| Released result | Gripper returned `holding: false`; post-run goal audit reported **79.583793°** tilt and `succeeded: true`. |
+| Final camera observation | Partial cylinder detection from the restored evidence pose; `longAxisAngleDeg` **37.763551**. |
+| Camera-only orientation change | **71.827°** using the undirected 0–180° long-axis convention. |
+| Recording UI | Live `REC` clock advanced during WebMCP calls; every event retained its exact offset. |
+| Replay UI | Scrubbed to **18.8s**, resumed at **1×**, and at **23.3s** the viewport switched to the recorded first-output scene while the active event changed from Sense to Act. Pause also held the recorded frame. |
+
+The per-event offsets are intentionally labelled as elapsed wall-clock positions, not tool execution durations. The run recorder persists milestone scenes at Start, each successful output, and End; replay never mutates the live simulator state.
 
 ## 12-seed Operate-only reliability sweep
 
@@ -139,7 +155,7 @@ After the successful run, a second native audit entered Operate at revision 15 w
 | Required security/feature headers | **[PENDING]** |
 | Full constrained trial completes | **[PENDING]** |
 | Narrow viewport remains usable | **[PENDING]** |
-| Public source repository | [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface) |
+| Public source repository | [over-TT/RAI](https://github.com/over-TT/RAI) |
 | Public YouTube video, audio, captions, under 3 minutes | **[PENDING]** |
 
 ## Evidence boundary

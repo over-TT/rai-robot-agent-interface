@@ -7,11 +7,20 @@ import type {
   ActivitySource,
   CommandResult,
   DispatchOptions,
+  RecordedRun,
+  RecordedRunEvent,
+  RecordedRunFrame,
   SimulationCommand,
   SimulationState,
   StorageLike,
 } from './types'
-import { SimulationError, validateScene, validateStoredState } from './validation'
+import {
+  MAX_RECORDED_RUN_EVENTS,
+  MAX_RECORDED_RUNS,
+  SimulationError,
+  validateScene,
+  validateStoredState,
+} from './validation'
 
 export const DEFAULT_STORAGE_KEY = 'webmcp-robot-sim/state/v2-arm-only'
 export const MAX_SIMULATION_IMPORT_BYTES = 5 * 1024 * 1024
@@ -35,6 +44,7 @@ export function createDefaultSimulationState(): SimulationState {
     history: { undo: [], redo: [] },
     snapshots: [],
     activity: [],
+    recordings: [],
     phase: 'build',
     operation: null,
   }
@@ -61,14 +71,45 @@ function normalizeSceneExtensions(scene: SimulationState['scene']): SimulationSt
 
 /** Preserve v1 browser files while materializing fields introduced by the manipulation layer. */
 function normalizeStoredExtensions(state: SimulationState): SimulationState {
+  const scene = normalizeSceneExtensions(state.scene)
+  const recordings = (state.recordings ?? []).map((recording) => ({
+    ...recording,
+    events: recording.events.map((event) => ({
+      ...event,
+      ...(event.frame
+        ? { frame: { ...event.frame, scene: normalizeSceneExtensions(event.frame.scene) } }
+        : {}),
+    })),
+  }))
+  if (recordings.length === 0 && state.phase === 'operate' && state.operation) {
+    recordings.push({
+      id: state.operation.trialId,
+      startedAt: state.operation.startedAt,
+      events: [{
+        id: `legacy-begin-${state.revision}`,
+        at: state.operation.startedAt,
+        source: 'system',
+        action: 'begin_arm_trial',
+        status: 'ok',
+        summary: 'Resumed legacy run from its current scene; earlier steps were not recorded.',
+        revision: state.revision,
+        elapsedMs: 0,
+        frame: {
+          scene: cloneSerializable(scene),
+          gripperClosed: state.operation.gripper === 'closed',
+        },
+      }],
+    })
+  }
   return {
     ...state,
-    scene: normalizeSceneExtensions(state.scene),
+    scene,
     history: {
       undo: state.history.undo.map((frame) => ({ ...frame, scene: normalizeSceneExtensions(frame.scene) })),
       redo: state.history.redo.map((frame) => ({ ...frame, scene: normalizeSceneExtensions(frame.scene) })),
     },
     snapshots: state.snapshots.map((snapshot) => ({ ...snapshot, scene: normalizeSceneExtensions(snapshot.scene) })),
+    recordings,
     phase: state.phase ?? 'build',
     operation: state.phase === 'operate' ? state.operation : null,
   }
@@ -153,25 +194,88 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
     return persisted
   }
 
+  function elapsedMs(startedAt: string, at: string, previousElapsedMs = 0): number {
+    const elapsed = Date.parse(at) - Date.parse(startedAt)
+    return Math.max(previousElapsedMs, Number.isFinite(elapsed) ? elapsed : 0)
+  }
+
+  function renderFrame(gripperClosed?: boolean): RecordedRunFrame {
+    return {
+      scene: cloneSerializable(state.scene),
+      gripperClosed: gripperClosed ?? state.operation?.gripper === 'closed',
+    }
+  }
+
+  function boundRunEvents(events: RecordedRunEvent[]): RecordedRunEvent[] {
+    if (events.length <= MAX_RECORDED_RUN_EVENTS) return events
+    return [events[0], ...events.slice(-(MAX_RECORDED_RUN_EVENTS - 1))]
+  }
+
+  function appendRecordedEvent(
+    recordings: RecordedRun[],
+    activity: ActivityEntry,
+    frameGripperClosed?: boolean,
+  ): RecordedRun[] {
+    const successfulStart = activity.action === 'begin_arm_trial' && activity.status === 'ok'
+    if (successfulStart) {
+      const event: RecordedRunEvent = {
+        ...activity,
+        elapsedMs: 0,
+        frame: renderFrame(frameGripperClosed),
+      }
+      const recording: RecordedRun = {
+        id: state.operation?.trialId ?? `recording-${activity.id}`,
+        startedAt: activity.at,
+        events: [event],
+      }
+      return [...recordings, recording].slice(-MAX_RECORDED_RUNS)
+    }
+
+    let activeIndex = -1
+    for (let index = recordings.length - 1; index >= 0; index -= 1) {
+      if (recordings[index].finishedAt === undefined) {
+        activeIndex = index
+        break
+      }
+    }
+    if (activeIndex < 0) return recordings
+    const active = recordings[activeIndex]
+    const previousElapsedMs = active.events.at(-1)?.elapsedMs ?? 0
+    const eventElapsedMs = elapsedMs(active.startedAt, activity.at, previousElapsedMs)
+    const capturesFrame = activity.status === 'ok'
+      && (activity.action === 'set_arm_outputs' || activity.action === 'end_arm_trial')
+    const event: RecordedRunEvent = {
+      ...activity,
+      elapsedMs: eventElapsedMs,
+      ...(capturesFrame ? { frame: renderFrame(frameGripperClosed) } : {}),
+    }
+    const finished = activity.action === 'end_arm_trial' && activity.status === 'ok'
+    const nextRecording: RecordedRun = {
+      ...active,
+      events: boundRunEvents([...active.events, event]),
+      ...(finished ? { finishedAt: activity.at, durationMs: eventElapsedMs } : {}),
+    }
+    return recordings.map((recording, index) => index === activeIndex ? nextRecording : recording)
+  }
+
   function appendActivity(entry: {
     source: ActivitySource
     action: string
     status: ActivityEntry['status']
     summary: string
     requestId?: string
-  }): boolean {
+  }, frameGripperClosed?: boolean): boolean {
     activityCounter += 1
+    const activity: ActivityEntry = {
+      id: `activity-${state.revision}-${activityCounter}`,
+      at: now(),
+      revision: state.revision,
+      ...entry,
+    }
     state = {
       ...state,
-      activity: [
-        ...state.activity,
-        {
-          id: `activity-${state.revision}-${activityCounter}`,
-          at: now(),
-          revision: state.revision,
-          ...entry,
-        },
-      ].slice(-MAX_ACTIVITY),
+      activity: [...state.activity, activity].slice(-MAX_ACTIVITY),
+      recordings: appendRecordedEvent(state.recordings, activity, frameGripperClosed),
     }
     return emit()
   }
@@ -192,6 +296,7 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
     }
 
     try {
+      const gripperClosedBeforeCommand = state.operation?.gripper === 'closed'
       const execution = executeSimulationCommand(state, command, now())
       state = execution.state
       if (command.requestId) {
@@ -204,7 +309,7 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
         status: 'ok',
         summary: execution.result.summary,
         ...(command.requestId ? { requestId: command.requestId } : {}),
-      })
+      }, command.type === 'end_arm_trial' ? gripperClosedBeforeCommand : undefined)
       return execution.result
     } catch (error) {
       appendActivity({

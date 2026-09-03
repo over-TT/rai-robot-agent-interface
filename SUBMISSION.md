@@ -6,7 +6,7 @@ RAI — Robot Agent Interface — is ready to present as one focused story: an A
 
 - **Public name:** RAI — Robot Agent Interface
 - **Tagline:** Build the arm. Then take away the map.
-- **Public source repository:** [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface)
+- **Public source repository:** [over-TT/RAI](https://github.com/over-TT/RAI)
 
 ## Current proof snapshot
 
@@ -15,7 +15,7 @@ RAI — Robot Agent Interface — is ready to present as one focused story: an A
 - Restricted camera trial: **96.393° upright → 41.017° tipped** in image space.
 - Human-visible result: **released at 79.6°; Done**.
 - 12-seed Operate-only sweep: **12/12 first-try grasps**, **12/12 camera-confirmed tips**, **12/12 post-end hidden goal checks**, **39.5–42.6° camera-axis change**, and **8 output calls on average**.
-- Automated gate: TypeScript passed; **61/61 tests in 10 files**; production build passed with **612 transformed modules**.
+- Automated gate: TypeScript passed; **68/68 tests in 12 files**; production build passed with **613 transformed modules**.
 
 The centered final view was ambiguous in the sweep; a **±35° side-view retry** supplied the camera confirmation. Hosted and public-video proof remain pending.
 
@@ -73,7 +73,7 @@ Use [submission-assets/demo-shot-list.md](./submission-assets/demo-shot-list.md)
 
 RAI turns a browser tab into a shared robot-arm experiment. In Build mode, a person or WebMCP agent can start from Arm 101, create or edit a supported serial chain, configure its camera, author primitive scene objects, set a goal, test named grasps and poses, run joint sequences, and save a snapshot. Arm 101 includes a simulated gripper output; Build mode does not configure gripper hardware.
 
-Starting a trial changes the rules. The can is reset to an unknown reachable placement, scene authoring locks, and the agent must operate from the same limited evidence a robot controller would receive: an ideal-pinhole camera observation plus basic arm telemetry. It can send joint and gripper outputs, observe the consequence, and retry. The person watches the same scene and a visible Observe → Sense → Act → Observe → Retry → Result timeline.
+Starting a trial changes the rules. The can is reset to an unknown reachable placement, scene authoring locks, and the agent must operate from the same limited evidence a robot controller would receive: an ideal-pinhole camera observation plus basic arm telemetry. It can send joint and gripper outputs, observe the consequence, and retry. The person watches the same scene, a live run clock, and the visible Observe → Sense → Act → Observe → Adjust → Result timeline. Each run persists milestone scene frames and exact wall-clock offsets for a later 1× replay.
 
 ### Why WebMCP matters
 

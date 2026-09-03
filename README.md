@@ -20,9 +20,9 @@ This folder is isolated from the physical Arm Alliance stack. It does **not** co
 - A local native-WebMCP trial changed the can's camera-frame long-axis angle from **96.393° upright to 41.017° tipped**.
 - The human-visible result showed the can **released at 79.6°** with the goal marked **Done**.
 - A 12-seed Operate-only sweep achieved **12/12 first-try grasps**, **12/12 camera-confirmed tips**, and **12/12 post-end hidden goal checks**, averaging **8 output calls**. The camera-axis change ranged from **39.5° to 42.6°**.
-- The automated gate passed **61/61 tests in 10 files**, TypeScript, and a production build of **612 transformed modules**.
+- The automated gate passed **68/68 tests in 12 files**, TypeScript, and a production build of **613 transformed modules**.
 
-The centered final camera view was ambiguous across the reliability sweep, so the agent used a **±35° side-view retry** to confirm each tip. These are local receipts, not hosted or physical-robot proof. The public source repository is [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface). Hosted verification remains pending.
+The centered final camera view was ambiguous across the reliability sweep, so the agent used a **±35° side-view retry** to confirm each tip. These are local receipts, not hosted or physical-robot proof. The public source repository is [over-TT/RAI](https://github.com/over-TT/RAI). Hosted verification remains pending.
 
 ## Run locally
 
@@ -59,7 +59,8 @@ Open `http://127.0.0.1:4177`. Development, preview, and the included hosting con
 - Primitive scene authoring for boxes, spheres, cylinders, and planes
 - Human joint and gripper controls that use the same validated command path as WebMCP
 - Multi-waypoint joint sequences, undo/redo, local persistence, named snapshots, JSON export/import, and primitive visual URDF export
-- A visible activity trail that labels Build, Start, Observe, Sense, Act, Retry, Blocked, Stopped, and Result steps
+- A live agent trail with an exact run clock, clearly labeled steps, and persisted 1× scene replay using the original wall-clock gaps
+- A focused home screen and compact agent handoff that frame Arm 101 as one starter demo, not the limit of the workbench
 - Phase-aware WebMCP registration with strict schemas, runtime validation, optimistic revision checks, retry deduplication, and cancellation handling
 
 Reference robots and cameras are simplified primitives. They do not include vendor CAD meshes, calibrated optics, or hardware behavior.

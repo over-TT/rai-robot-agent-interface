@@ -42,8 +42,8 @@ Build Arm 101 → Begin trial → Observe → Sense → Act → Observe → Retr
 - [x] Visible phase, attempt stages, shared camera/scene, and human-facing result.
 - [x] Human controls remain available when native WebMCP is unavailable.
 - [x] Current TypeScript check passes (`tsc -b`).
-- [x] Current automated tests pass: 61/61 in 10/10 files.
-- [x] Current production build passes with 612 transformed modules.
+- [x] Current automated tests pass: 68/68 in 12/12 files.
+- [x] Current production build passes with 613 transformed modules.
 - [x] Current clean local production bundle loads without application-console errors.
 - [ ] 390 px viewport acceptance check completed.
 
@@ -124,8 +124,8 @@ Run this sequence in a fresh judging-browser origin and copy exact receipts into
 | --- | --- | --- |
 | Public live app | Pending | HTTPS URL works through judging path and while signed out |
 | Native WebMCP | Passed locally; hosted repeat pending | 19 discovered tools, correct phase behavior, completed constrained trial |
-| Public source repository | Public URL available | [over-TT/rai-robot-agent-interface](https://github.com/over-TT/rai-robot-agent-interface) |
-| Automated gate | Passed locally | TypeScript passed; 61/61 tests in 10 files; production build passed with 612 transformed modules |
+| Public source repository | Public URL available | [over-TT/RAI](https://github.com/over-TT/RAI) |
+| Automated gate | Passed locally | TypeScript passed; 68/68 tests in 12 files; production build passed with 613 transformed modules |
 | Video | Exact shot list, narration, and caption draft present | Public YouTube, audio, captions, under three minutes |
 | English description | Copy-ready | Paste from `submission-assets/devpost-copy.md` after filling public URLs |
 | Challenge-period provenance | Present in project; public check pending | `NEW_WORK.md` and dated public history |

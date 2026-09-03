@@ -16,6 +16,8 @@ export type IconName =
   | 'layers'
   | 'more'
   | 'minus'
+  | 'pause'
+  | 'play'
   | 'plus'
   | 'redo'
   | 'save'
@@ -56,6 +58,8 @@ export function Icon({ name, size = 16, ...props }: Props) {
     layers: <><path d="m12 3 9 5-9 5-9-5z" /><path d="m3 12 9 5 9-5M3 16l9 5 9-5" /></>,
     more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
     minus: <path d="M5 12h14" />,
+    pause: <><path d="M8 5v14M16 5v14" /></>,
+    play: <path d="m8 5 11 7-11 7z" />,
     plus: <path d="M12 5v14M5 12h14" />,
     redo: <><path d="m15 6 4 4-4 4" /><path d="M5 18v-3a5 5 0 0 1 5-5h9" /></>,
     save: <><path d="M4 3h13l3 3v15H4z" /><path d="M8 3v6h8V3M8 21v-7h8v7" /></>,

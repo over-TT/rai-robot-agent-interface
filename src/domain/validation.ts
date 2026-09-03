@@ -23,6 +23,8 @@ const GRASP_POSE_TOLERANCE = 1e-4
 const WORKSPACE_POSITION_LIMIT_M = 20
 /** Roughly 31 years of continuous one-mutation-per-second use. */
 export const MAX_SIMULATION_REVISION = 1_000_000_000
+export const MAX_RECORDED_RUNS = 6
+export const MAX_RECORDED_RUN_EVENTS = 120
 
 export type SimulationErrorCode =
   | 'INVALID_INPUT'
@@ -452,7 +454,7 @@ export function validateScene(scene: SimulationScene): void {
 export function validateStoredState(value: unknown): value is SimulationState {
   try {
     assertRecord(value, 'state')
-    assertNoUnknownKeys(value, ['schema', 'schemaVersion', 'revision', 'scene', 'history', 'snapshots', 'activity', 'phase', 'operation'], 'state')
+    assertNoUnknownKeys(value, ['schema', 'schemaVersion', 'revision', 'scene', 'history', 'snapshots', 'activity', 'recordings', 'phase', 'operation'], 'state')
     if (value.schema !== 'webmcp-robot-sim-state' || value.schemaVersion !== 1) return false
     assertFiniteNumber(value.revision, 'state.revision', 0, MAX_SIMULATION_REVISION)
     if (!Number.isInteger(value.revision)) return false
@@ -481,7 +483,7 @@ export function validateStoredState(value: unknown): value is SimulationState {
         validateScene(frame.scene as SimulationScene)
       }
     }
-    if (!Array.isArray(value.snapshots) || !Array.isArray(value.activity)) return false
+    if (!Array.isArray(value.snapshots) || !Array.isArray(value.activity) || !Array.isArray(value.recordings)) return false
     if (value.snapshots.length > 30 || value.activity.length > 120) return false
     for (const [index, snapshot] of value.snapshots.entries()) {
       assertRecord(snapshot, `state.snapshots[${index}]`)
@@ -505,6 +507,82 @@ export function validateStoredState(value: unknown): value is SimulationState {
       assertFiniteNumber(activity.revision, `state.activity[${index}].revision`, 0, MAX_SIMULATION_REVISION)
       if (!Number.isInteger(activity.revision)) return false
       if (activity.requestId !== undefined) validateId(activity.requestId, `state.activity[${index}].requestId`)
+    }
+    if (value.recordings.length > MAX_RECORDED_RUNS) return false
+    const recordingIds = new Set<string>()
+    let unfinishedRecordingIndex = -1
+    for (const [recordingIndex, recording] of value.recordings.entries()) {
+      const label = `state.recordings[${recordingIndex}]`
+      assertRecord(recording, label)
+      assertNoUnknownKeys(recording, ['id', 'startedAt', 'finishedAt', 'durationMs', 'events'], label)
+      validateId(recording.id, `${label}.id`)
+      if (recordingIds.has(recording.id)) return false
+      recordingIds.add(recording.id)
+      assertString(recording.startedAt, `${label}.startedAt`, 50)
+      const startedAtMs = Date.parse(recording.startedAt)
+      if (!Number.isFinite(startedAtMs)) return false
+      if (!Array.isArray(recording.events) || recording.events.length === 0 || recording.events.length > MAX_RECORDED_RUN_EVENTS) return false
+
+      const eventIds = new Set<string>()
+      let previousElapsedMs = 0
+      for (const [eventIndex, event] of recording.events.entries()) {
+        const eventLabel = `${label}.events[${eventIndex}]`
+        assertRecord(event, eventLabel)
+        assertNoUnknownKeys(event, ['id', 'at', 'source', 'action', 'status', 'summary', 'revision', 'requestId', 'elapsedMs', 'frame'], eventLabel)
+        validateId(event.id, `${eventLabel}.id`)
+        if (eventIds.has(event.id)) return false
+        eventIds.add(event.id)
+        assertString(event.at, `${eventLabel}.at`, 50)
+        const eventAtMs = Date.parse(event.at)
+        if (!Number.isFinite(eventAtMs)) return false
+        if (!['ui', 'webmcp', 'system'].includes(String(event.source))) return false
+        assertString(event.action, `${eventLabel}.action`, 100)
+        if (!['ok', 'error', 'cancelled'].includes(String(event.status))) return false
+        assertString(event.summary, `${eventLabel}.summary`, 500)
+        assertFiniteNumber(event.revision, `${eventLabel}.revision`, 0, MAX_SIMULATION_REVISION)
+        if (!Number.isInteger(event.revision) || event.revision > value.revision) return false
+        if (event.requestId !== undefined) validateId(event.requestId, `${eventLabel}.requestId`)
+        assertFiniteNumber(event.elapsedMs, `${eventLabel}.elapsedMs`, 0, Number.MAX_SAFE_INTEGER)
+        if (!Number.isInteger(event.elapsedMs)) return false
+        const expectedElapsedMs = Math.max(previousElapsedMs, eventAtMs - startedAtMs, 0)
+        if (event.elapsedMs !== expectedElapsedMs) return false
+        previousElapsedMs = event.elapsedMs
+
+        const shouldCaptureFrame = event.status === 'ok'
+          && (event.action === 'begin_arm_trial' || event.action === 'set_arm_outputs' || event.action === 'end_arm_trial')
+        if (shouldCaptureFrame !== (event.frame !== undefined)) return false
+        if (event.frame !== undefined) {
+          assertRecord(event.frame, `${eventLabel}.frame`)
+          assertNoUnknownKeys(event.frame, ['scene', 'gripperClosed'], `${eventLabel}.frame`)
+          if (typeof event.frame.gripperClosed !== 'boolean') return false
+          validateScene(event.frame.scene as SimulationScene)
+        }
+      }
+
+      const firstEvent = recording.events[0]
+      if (firstEvent.action !== 'begin_arm_trial' || firstEvent.status !== 'ok' || firstEvent.elapsedMs !== 0 || firstEvent.at !== recording.startedAt) return false
+      const lastEvent = recording.events.at(-1)!
+      const finished = recording.finishedAt !== undefined || recording.durationMs !== undefined
+      if (finished) {
+        if (recording.finishedAt === undefined || recording.durationMs === undefined) return false
+        assertString(recording.finishedAt, `${label}.finishedAt`, 50)
+        const finishedAtMs = Date.parse(recording.finishedAt)
+        if (!Number.isFinite(finishedAtMs)) return false
+        assertFiniteNumber(recording.durationMs, `${label}.durationMs`, 0, Number.MAX_SAFE_INTEGER)
+        if (!Number.isInteger(recording.durationMs)) return false
+        if (lastEvent.action !== 'end_arm_trial' || lastEvent.status !== 'ok' || lastEvent.at !== recording.finishedAt) return false
+        if (recording.durationMs !== Math.max(lastEvent.elapsedMs, finishedAtMs - startedAtMs, 0)) return false
+      } else {
+        if (recording.events.some((event) => event.action === 'end_arm_trial' && event.status === 'ok')) return false
+        if (unfinishedRecordingIndex >= 0) return false
+        unfinishedRecordingIndex = recordingIndex
+      }
+    }
+    if (unfinishedRecordingIndex >= 0) {
+      if (unfinishedRecordingIndex !== value.recordings.length - 1 || value.phase !== 'operate') return false
+      if ((value.operation as Record<string, unknown>).trialId !== value.recordings[unfinishedRecordingIndex].id) return false
+    } else if (value.phase === 'operate' && value.recordings.length > 0) {
+      return false
     }
     if (value.phase === 'operate' && !(value.scene as SimulationScene).cameras.some((camera) => camera.id === (value.operation as Record<string, unknown>).cameraId)) {
       return false

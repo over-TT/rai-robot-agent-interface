@@ -35,7 +35,7 @@ Across a separate 12-seed Operate-only sweep, RAI completed 12/12 first-try gras
 
 React and Three.js render original primitive geometry from a versioned scene model. Deterministic forward kinematics drive the serial arm. Camera observations come from analytic ideal-pinhole projection. A bounded kinematic capture rule attaches, carries, rotates, and releases the practice object. The imperative WebMCP adapter registers nineteen schema-validated tools against the same revisioned store used by the human interface, with phase checks, optimistic revisions, cancellation, and request deduplication.
 
-The current local gate passes TypeScript, 61/61 tests in 10 files, and a production build of 612 transformed modules.
+The current local gate passes TypeScript, 68/68 tests in 12 files, and a production build of 613 transformed modules.
 
 ### Why WebMCP matters
 
@@ -48,6 +48,6 @@ RAI is Isaac-Sim-inspired, not a browser replacement for Isaac Sim and not a phy
 ## Links — fill only after verification
 
 - **Live app:** `[PENDING — root will insert verified public HTTPS URL]`
-- **Public source:** https://github.com/over-TT/rai-robot-agent-interface
+- **Public source:** https://github.com/over-TT/RAI
 - **Demo video:** `[PENDING — insert public YouTube URL after signed-out playback check]`
 - **Submitted commit:** `[PENDING — insert exact verified public commit]`

@@ -217,6 +217,27 @@ export interface ActivityEntry {
   requestId?: string
 }
 
+/** A renderable simulator checkpoint captured at a state-changing run event. */
+export interface RecordedRunFrame {
+  scene: SimulationScene
+  gripperClosed: boolean
+}
+
+/** One visible activity entry positioned on the run's real wall-clock timeline. */
+export interface RecordedRunEvent extends ActivityEntry {
+  elapsedMs: number
+  frame?: RecordedRunFrame
+}
+
+/** A bounded, locally persisted recording of one camera-guided agent run. */
+export interface RecordedRun {
+  id: string
+  startedAt: string
+  finishedAt?: string
+  durationMs?: number
+  events: RecordedRunEvent[]
+}
+
 export interface SimulationState {
   schema: 'webmcp-robot-sim-state'
   schemaVersion: 1
@@ -228,6 +249,7 @@ export interface SimulationState {
   }
   snapshots: SimulationSnapshot[]
   activity: ActivityEntry[]
+  recordings: RecordedRun[]
   /** Build exposes scene-authoring tools; operate exposes only camera/telemetry/outputs. */
   phase: SimulationPhase
   operation: ArmOperationState | null

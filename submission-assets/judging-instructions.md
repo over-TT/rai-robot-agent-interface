@@ -3,7 +3,7 @@
 ## Links
 
 - **Live app:** `[PENDING — verified public HTTPS URL]`
-- **Public source:** https://github.com/over-TT/rai-robot-agent-interface
+- **Public source:** https://github.com/over-TT/RAI
 - **Video:** `[PENDING — public YouTube URL]`
 - **Verified commit:** `[PENDING]`
 
@@ -24,7 +24,7 @@
 - Camera-frame can angle: **96.393° upright → 41.017° tipped**.
 - Human-visible final result: **released, 79.6°, Done**.
 - 12-seed Operate-only sweep: **12/12 first-try grasps**, **12/12 camera-confirmed tips**, **12/12 post-end hidden goal checks**, **39.5–42.6° camera-axis change**, and **8 output calls on average**.
-- Automated gate: TypeScript passed; **61/61 tests in 10 files**; production build passed with **612 transformed modules**.
+- Automated gate: TypeScript passed; **68/68 tests in 12 files**; production build passed with **613 transformed modules**.
 
 The centered final view was ambiguous during the sweep, so each camera confirmation used a **±35° side-view retry**. The hidden goal check happened only after the trial ended and was not available to the operating agent. Hosted behavior must be compared against this reference after deployment; these local receipts are not a claim that the pending public URL has already passed.
 

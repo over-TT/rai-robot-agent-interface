@@ -1,5 +1,5 @@
 {
-  "name": "rai-robot-agent-interface",
+  "name": "rai",
   "private": true,
   "version": "0.1.0",
   "description": "RAI is an agent-native browser interface for building camera-equipped robot arms and operating them through WebMCP.",
