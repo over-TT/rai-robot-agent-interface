@@ -24,8 +24,9 @@ import { Icon, type IconName } from './components/Icon'
 import { AgentSetupDialog } from './components/AgentSetupDialog'
 import { RobotViewport, type ViewPreset } from './components/RobotScene'
 import { SensorViewport } from './components/SensorViewport'
+import { AgentCameraCapture } from './components/AgentCameraCapture'
 import { compactTime, degrees, mm, vectorMm } from './lib/format'
-import { formatRunDuration, timelineEntryAt, timelineFrameAt } from './lib/runTimeline'
+import { formatRunDuration, recordingCameraId, timelineEntryAt, timelineFrameAt } from './lib/runTimeline'
 import { readSimulationImportFile } from './lib/simulationImport'
 import { RAI_REPOSITORY_URL } from './lib/agentHandoff'
 
@@ -41,7 +42,7 @@ type DockTab = 'pose' | 'camera' | 'activity'
 type WebMcpStatus = 'unavailable' | 'registering' | 'ready' | 'error'
 type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'complete'
 
-const AGENT_RUN_PROMPT = 'Use this page\u2019s WebMCP tools to inspect the current robot and task. You may build or load a robot, configure its joints, cameras, and scene, then start a camera-guided run with begin_arm_trial. Preserve existing work unless I ask to replace it. During the run, use only observe_arm_camera, get_arm_telemetry, set_arm_outputs, and end_arm_trial. Work from structured camera-frame observations and joint telemetry, make bounded joint or gripper outputs, and observe again after each change. End when the observations support a conclusion or further progress is not useful. Do not read hidden goal state or use task shortcuts. Report what the observations establish and what remains uncertain.'
+const AGENT_RUN_PROMPT = 'Use this page\u2019s WebMCP tools to inspect the current robot and task. You may build or load a robot, configure its joints, cameras, and scene, then start a camera-guided run with begin_arm_trial. Preserve existing work unless I ask to replace it. During the run, use only observe_arm_camera, get_arm_telemetry, set_arm_outputs, and end_arm_trial. Display and inspect the rendered image returned by observe_arm_camera. Work from those pixels and joint telemetry, make bounded joint or gripper outputs, and observe again after each change. End when the observations support a conclusion or further progress is not useful. Do not read hidden goal state or use task shortcuts. Report what the observations establish and what remains uncertain.'
 
 function downloadTextFile(contents: string, mimeType: string, filename: string) {
   const url = URL.createObjectURL(new Blob([contents], { type: mimeType }))
@@ -838,6 +839,8 @@ function activityStage(action: string, status: 'ok' | 'error' | 'cancelled'):
 
 function AgentRunPanel({
   run,
+  runs,
+  onSelectRun,
   elapsedMs,
   playbackStatus,
   onPlayPause,
@@ -845,6 +848,8 @@ function AgentRunPanel({
   onSeek,
 }: {
   run?: RecordedRun
+  runs: RecordedRun[]
+  onSelectRun: (id: string) => void
   elapsedMs: number
   playbackStatus: PlaybackStatus
   onPlayPause: () => void
@@ -863,6 +868,7 @@ function AgentRunPanel({
       : 'Replay at 1× speed'
   return (
     <div className="agent-run-panel">
+      {runs.length > 1 ? <label className="run-picker">Attempt <select aria-label="Recorded attempt" value={run?.id ?? ''} disabled={recording} onChange={(event) => onSelectRun(event.target.value)}>{runs.map((item, index) => <option key={item.id} value={item.id}>{`Attempt ${index + 1} · ${new Date(item.startedAt).toLocaleString()} · ${item.finishedAt ? formatRunDuration(item.durationMs ?? 0) : 'Recording'}`}</option>)}</select></label> : null}
       <div className="activity-heading"><SectionTitle icon="activity" title="Attempt timeline" count={agentCount} /><span>{recording ? 'Recording tool calls' : run ? `${formatRunDuration(durationMs)} elapsed` : 'No attempt recorded'}</span></div>
       {run ? (
         <div className="run-transport">
@@ -996,10 +1002,13 @@ function HomeScreen({ onOpen, onWatch, webMcpStatus, run }: { onOpen: () => void
   )
 }
 
-export default function App() {
+function WorkbenchApp() {
   const state = useSyncExternalStore(simulationStore.subscribe, simulationStore.getSnapshot, simulationStore.getSnapshot)
   const operating = state.phase === 'operate'
-  const latestRun = state.recordings.at(-1)
+  const [selectedRunId, setSelectedRunId] = useState<string>()
+  const newestRun = state.recordings.at(-1)
+  const latestRun = operating ? newestRun : state.recordings.find((run) => run.id === selectedRunId) ?? newestRun
+  const persistenceStatus = simulationStore.getPersistenceStatus()
   const recording = Boolean(latestRun && !latestRun.finishedAt)
   const [clockNow, setClockNow] = useState(() => Date.now())
   const [playbackStatus, setPlaybackStatus] = useState<PlaybackStatus>('idle')
@@ -1022,6 +1031,8 @@ export default function App() {
   const agentBriefDialog = useRef<HTMLDialogElement>(null)
   const resetDialog = useRef<HTMLDialogElement>(null)
   const initialAgentActivityId = useRef(state.activity.slice().reverse().find((entry) => entry.source === 'webmcp')?.id)
+
+  useEffect(() => { setSelectedRunId(undefined) }, [newestRun?.id])
 
   useEffect(() => {
     setPlaybackStatus('idle')
@@ -1330,7 +1341,7 @@ export default function App() {
           onSelect={(kind, id) => setSelection({ kind, id } as Selection)}
         />
         <AgentRunHud run={latestRun} current={currentRunEvent} elapsedMs={visibleRunElapsedMs} playbackStatus={playbackStatus} onOpen={() => openDock('activity')} />
-        {runFocused && dockTab === 'activity' ? <div className="run-camera-preview"><span>{replayFocused ? 'Recorded camera pose' : 'Arm camera'} · simulated view</span><SensorViewport scene={displayScene} computed={computed} cameraId={state.operation?.cameraId ?? activeCameraId} gripperClosed={playbackFrame?.gripperClosed ?? state.operation?.gripper === 'closed'} /></div> : null}
+        {runFocused && dockTab === 'activity' ? <div className="run-camera-preview"><span>{replayFocused ? 'Recorded camera pose' : 'Arm camera'} · simulated view</span><SensorViewport scene={displayScene} computed={computed} cameraId={replayFocused && latestRun ? recordingCameraId(latestRun) : state.operation?.cameraId ?? activeCameraId} gripperClosed={playbackFrame?.gripperClosed ?? state.operation?.gripper === 'closed'} /></div> : null}
         {!replayFocused ? <ViewportGoalChip onOpen={() => openDock('pose')} /> : null}
         <div className="viewport-meta"><span><i className="live-dot" />{replayFocused ? `RECORDED RUN · 1×` : operating ? `AGENT RUN · CAMERA-GUIDED` : `ARM SIM · ${state.scene.robot.joints.length} DOF`}</span></div>
         <div className="view-switcher">
@@ -1385,7 +1396,7 @@ export default function App() {
         <div id="drawer-panel" className="drawer-content" role="tabpanel" aria-labelledby={`drawer-tab-${dockTab}`} hidden={!dockOpen}>
           {dockTab === 'pose' && !replaying ? <div className="pose-drawer-panel"><JointControls dispatch={dispatch} /><AgentTaskPanel dispatch={dispatch} /></div> : null}
           {dockTab === 'camera' && !replaying ? <CameraDock activeCameraId={activeCameraId} setActiveCameraId={setActiveCameraId} /> : null}
-          {dockTab === 'activity' ? <AgentRunPanel run={latestRun} elapsedMs={visibleRunElapsedMs} playbackStatus={playbackStatus} onPlayPause={playPauseRun} onRestart={restartRun} onSeek={seekRun} /> : null}
+          {dockTab === 'activity' ? <AgentRunPanel run={latestRun} runs={state.recordings} onSelectRun={setSelectedRunId} elapsedMs={visibleRunElapsedMs} playbackStatus={playbackStatus} onPlayPause={playPauseRun} onRestart={restartRun} onSeek={seekRun} /> : null}
         </div>
       </section>
 
@@ -1425,7 +1436,12 @@ export default function App() {
         </form>
       </dialog>
 
+      {persistenceStatus !== 'saved' ? <div className="storage-warning" role="alert">{persistenceStatus === 'conflict' ? 'Another tab has newer saved work. This tab will not overwrite it.' : 'Browser saving is unavailable.'} Export JSON to keep this tab’s work before reloading.</div> : null}
       {notice ? <div className={`toast ${notice.type}`} role={notice.type === 'error' ? 'alert' : 'status'}><Icon name={notice.type === 'ok' ? 'check' : 'warning'} size={15} />{notice.text}</div> : null}
     </main>
   )
+}
+
+export default function App() {
+  return <><AgentCameraCapture /><WorkbenchApp /></>
 }

@@ -99,7 +99,7 @@ describe('agent construction and kinematic manipulation', () => {
     expect(store.getSnapshot().scene).toEqual(sceneBefore)
   })
 
-  it('grasps without snapping, carries with the robot, releases frozen, and evaluates a delivery goal', () => {
+  it('grasps without snapping, carries with the robot, settles after release, and evaluates a delivery goal', () => {
     const store = createSimulationStore({ storage: null })
     store.dispatch({ type: 'load_robot_preset', presetId: 'generic-2r' })
     const endEffector = store.getComputedState().endEffector.positionM
@@ -123,12 +123,13 @@ describe('agent construction and kinematic manipulation', () => {
     expect(carriedPose.positionM).not.toEqual(poseBefore.positionM)
 
     store.dispatch({ type: 'control_grasp', action: 'release' })
+    const settledPose = cloneSerializable(store.getSnapshot().scene.objects.find((object) => object.id === 'payload')!.pose)
     store.dispatch({ type: 'set_joint_positions', positions: [{ jointId: '2r-j1', value: 5 }] })
-    expect(store.getSnapshot().scene.objects.find((object) => object.id === 'payload')!.pose).toEqual(carriedPose)
+    expect(store.getSnapshot().scene.objects.find((object) => object.id === 'payload')!.pose).toEqual(settledPose)
 
     store.dispatch({
       type: 'set_simulation_goal', action: 'set',
-      goal: { name: 'Deliver payload', type: 'object-at-position', objectId: 'payload', targetPositionM: carriedPose.positionM, toleranceM: 0.001 },
+      goal: { name: 'Deliver payload', type: 'object-at-position', objectId: 'payload', targetPositionM: settledPose.positionM, toleranceM: 0.001 },
     })
     expect(evaluateSimulationGoal(store.getSnapshot().scene)).toMatchObject({ succeeded: true, type: 'object-at-position' })
     store.dispatch({ type: 'undo' })

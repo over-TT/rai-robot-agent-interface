@@ -71,7 +71,7 @@ Example output shape—not a route or task solution:
 }
 ```
 
-Choose actual outputs from fresh camera observations and telemetry, then observe again. Empty detections are not success. A close command is not proof of capture; inspect `gripper.holding`. `gripper: "unchanged"` alone is not an output.
+Choose actual outputs from fresh camera images and telemetry, then observe again. `observe_arm_camera` returns a JPEG in its `content` array; display and inspect it using your host's image support. Do not substitute hidden scene reads if images cannot be displayed. An empty view is not success. A close command is not proof of capture; inspect `gripper.holding`. `gripper: "unchanged"` alone is not an output.
 
 Do not read world positions, hidden goals, source coordinates, DOM state, or exported scene data during a blind run. Do not use IK, named-object grasp, or scene edits. Build tools must return `PHASE_LOCKED` without privileged payloads.
 
@@ -81,7 +81,7 @@ End with `end_arm_trial` and `{ "requestId": "trial-101-end" }`. Ending does not
 
 **Run** shows actual recorded tool activity. **Replay 1×** preserves original pauses; click a step or **Next** to inspect it. The robot and camera inset reconstruct recorded scene states—not continuous video or the agent's private reasoning.
 
-Up to six runs and 120 events per run are retained in the current browser. Long runs can omit middle events. A new public-site visitor does not receive another browser's recordings. Export JSON from the file menu to retain/move a project.
+Pick an attempt in **Run** to inspect older recordings. Up to six runs and 120 events per run are retained in the current browser. Long runs can omit middle events while preserving a real pose anchor before the retained tail. A new public-site visitor does not receive another browser's recordings. Export JSON from the file menu to retain/move a project. A storage conflict warning means another tab saved newer work: export the current tab before reloading it. The app does not silently overwrite the other tab's saved work.
 
 ## Troubleshooting
 
@@ -94,12 +94,15 @@ Up to six runs and 120 events per run are retained in the current browser. Long 
 | `INVALID_INPUT` / `LIMIT_EXCEEDED` | Follow the schema and current limits; no partial edit should occur. |
 | `NOT_FOUND` | Inspect current IDs in Build, rather than guessing. |
 | `CONFLICT` | Check active-run state and camera availability. |
-| No detections | Change viewpoint through bounded joints and observe again. |
+| Empty camera view | Change viewpoint through bounded joints and observe again. |
+| `CAMERA_UNAVAILABLE` | Wait for the renderer to become ready and retry; do not treat this as an observation or read hidden scene data. |
 | Gripper not holding | Inspect and adjust; accepted output is not capture proof. |
 | Storage unavailable | Export before leaving the page. |
 
 ## Limits
 
-This is kinematics plus analytic pinhole detections, not real contact physics. There is no gravity, motor torque, camera noise, or real-servo arrival. Released primitives freeze at their simulated pose. A successful result proves this browser simulation only.
+JSON imports have a 64 MiB resource limit, checked before file reading and again before parsing. Browser auto-save quotas are smaller and browser-dependent; export if the app warns that saving failed. Very large projects can exceed the import budget, so keep separate project files for large experiments.
+
+This is kinematics plus rendered pinhole images, not real contact physics. Released primitives keep their orientation and instantly settle vertically onto horizontal fixed supports or the floor. There is no falling dynamics, bounce, friction, motor torque, camera noise, or real-servo arrival. A successful result proves this browser simulation only.
 
 [Full tool contract](../WEBMCP_TOOLS.md) · [Verification receipts](../NATIVE_WEBMCP_EVIDENCE.md) · [Open RAI](https://arm-lab-camera-robot.overtt.chatgpt.site)

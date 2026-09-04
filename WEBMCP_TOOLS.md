@@ -41,11 +41,10 @@ Input: an empty object.
 Returns:
 
 - current revision, phase, and trial ID;
-- camera model, reference resolution, and horizontal/vertical field of view;
-- visible movable primitives as `visualClass`, camera-frame `normalizedBounds`, `centerNormalized`, and frame-clipping state;
-- for can-like cylinders, camera-derived `longAxisAngleDeg` and `longAxisLengthNormalized`, where 0 degrees is image-horizontal and 90 degrees is image-vertical.
+- camera model, actual image resolution, and horizontal/vertical field of view;
+- `content: [{ type: "image", mimeType: "image/jpeg", data: "<base64>" }]`, containing the rendered simulated camera image, bounded to a 640-pixel longest edge.
 
-The long-axis fields describe only the projected cylinder in the image plane; they are not object pose or world orientation. The tool does **not** return object IDs, names, world positions, distances, goal coordinates, or the goal result. The observation is computed from ideal-pinhole projection of simulated primitives. It is structured camera-frame evidence—not rendered pixels, learned object detection, calibrated optics, or physical camera data.
+Inspect the returned image using the host's image-content support. Pixels include depth occlusion but omit world axes, camera frustums, selection highlights, and goal annotations. The tool does **not** return object IDs, names, world positions, distances, goal coordinates, goal results, or analytic detections. It is rendered ideal-pinhole simulation, not physical camera data or calibrated optics. If capture is unavailable or the scene/trial changes during capture, the call fails with `CAMERA_UNAVAILABLE` rather than returning stale or synthetic evidence.
 
 Every successful observation is added to the visible Agent run timeline without changing the simulation revision.
 
@@ -154,9 +153,9 @@ The human-visible result is deliberately richer than the Operate tool response. 
 ## Honest limits
 
 - Serial arms use deterministic kinematics; no motor torque, velocity loop, backlash, elasticity, or electrical behavior is modeled.
-- The trial camera returns analytic ideal-pinhole structured detections, not rendered pixels or physical camera frames.
+- The trial camera returns rendered ideal-pinhole images, not physical camera frames. Lens distortion, exposure, noise, and learned detection are not modeled.
 - Closing the gripper creates a rigid kinematic attachment only when a primitive falls inside the fixed envelope. There is no finger contact solving, force closure, friction cone, payload limit, or grasp-stability model.
-- The attached object follows the end-effector pose and can rotate with it. Release freezes the current simulated pose; gravity-driven falling and settling are not modeled.
+- The attached object follows the end-effector pose and can rotate with it. Release keeps its orientation and instantly settles vertically onto a horizontal fixed support beneath its centre, or the floor. Falling dynamics, bounce, rolling, and angular settling are not modeled.
 - General robot/object collision and contact-force response are not modeled.
 - A visible success is browser-simulation evidence only. It is not proof of safe, accurate, or successful physical-arm behavior.
 

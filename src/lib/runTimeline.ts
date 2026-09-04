@@ -1,5 +1,13 @@
 import type { RecordedRun, RecordedRunEvent, RecordedRunFrame } from '../domain'
 
+export function recordingCameraId(run: RecordedRun): string | undefined {
+  if (run.cameraId) return run.cameraId
+  const cameras = run.events[0].frame?.scene.cameras ?? []
+  // Older recordings predate cameraId; reproduce the trial's selection rule
+  // using its recorded scene, never a camera from the current live build.
+  return (cameras.find((camera) => camera.presetId === 'rpi-camera-module-3-wide') ?? cameras[0])?.id
+}
+
 export function timelineEntryAt(run: RecordedRun, elapsedMs: number): RecordedRunEvent {
   let selected = run.events[0]
   for (const candidate of run.events) {

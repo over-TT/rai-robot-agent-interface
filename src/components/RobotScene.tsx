@@ -32,6 +32,7 @@ interface SceneContentProps {
   onSelect?: (kind: 'joint' | 'camera' | 'object', id: string) => void
   showFrustums?: boolean
   showCameraBodies?: boolean
+  showAnnotations?: boolean
 }
 
 const CAMERA_DIRECTIONS: Record<ViewPreset, [number, number, number]> = {
@@ -346,7 +347,7 @@ function CameraFrustum({ camera, frame, selected, showFrustum, onSelect }: {
   )
 }
 
-export function SceneContent({ scene, computed, selectedId, gripperClosed = false, onSelect, showFrustums = true, showCameraBodies = true }: SceneContentProps) {
+export function SceneContent({ scene, computed, selectedId, gripperClosed = false, onSelect, showFrustums = true, showCameraBodies = true, showAnnotations = true }: SceneContentProps) {
   const goalEvaluation = evaluateSimulationGoal(scene)
   const goalPosition = scene.goal?.type === 'object-at-position' || scene.goal?.type === 'end-effector-at-position'
     ? scene.goal.targetPositionM
@@ -358,13 +359,13 @@ export function SceneContent({ scene, computed, selectedId, gripperClosed = fals
         <ObjectMesh
           key={object.id}
           object={object}
-          selected={selectedId === object.id}
-          grasped={scene.grasp?.objectId === object.id}
+          selected={showAnnotations && selectedId === object.id}
+          grasped={showAnnotations && scene.grasp?.objectId === object.id}
           onSelect={() => onSelect?.('object', object.id)}
         />
       ))}
 
-      {goalPosition ? <GoalMarker position={goalPosition} succeeded={goalEvaluation.succeeded} /> : null}
+      {showAnnotations && goalPosition ? <GoalMarker position={goalPosition} succeeded={goalEvaluation.succeeded} /> : null}
 
       {computed.links.map((frame) => {
         const linkIndex = scene.robot.links.findIndex((candidate) => candidate.id === frame.linkId)
@@ -408,9 +409,9 @@ export function SceneContent({ scene, computed, selectedId, gripperClosed = fals
         ) : null
       })}
 
-      <Line points={[[0, 0, 0], [0.12, 0, 0]]} color="#e98787" lineWidth={1.4} />
+      {showAnnotations ? <><Line points={[[0, 0, 0], [0.12, 0, 0]]} color="#e98787" lineWidth={1.4} />
       <Line points={[[0, 0, 0], [0, 0.12, 0]]} color="#79b991" lineWidth={1.4} />
-      <Line points={[[0, 0, 0], [0, 0, 0.12]]} color="#74aee0" lineWidth={1.4} />
+      <Line points={[[0, 0, 0], [0, 0, 0.12]]} color="#74aee0" lineWidth={1.4} /></> : null}
     </group>
   )
 }

@@ -232,6 +232,8 @@ export interface RecordedRunEvent extends ActivityEntry {
 /** A bounded, locally persisted recording of one camera-guided agent run. */
 export interface RecordedRun {
   id: string
+  /** Captured trial camera, independent of later human camera selection. */
+  cameraId?: string
   startedAt: string
   finishedAt?: string
   durationMs?: number

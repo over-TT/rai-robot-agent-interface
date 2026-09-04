@@ -1,7 +1,7 @@
 import type { RecordedRun, RecordedRunEvent, RecordedRunFrame, SimulationScene } from '../domain'
 import { createDefaultSimulationState } from '../domain'
 import { describe, expect, it } from 'vitest'
-import { formatRunDuration, timelineEntryAt, timelineFrameAt } from './runTimeline'
+import { formatRunDuration, recordingCameraId, timelineEntryAt, timelineFrameAt } from './runTimeline'
 
 function event(id: string, action: string, elapsedMs: number, frame?: RecordedRunFrame): RecordedRunEvent {
   return {
@@ -22,6 +22,15 @@ function frame(scene: SimulationScene, gripperClosed = false): RecordedRunFrame 
 }
 
 describe('run timeline', () => {
+  it('uses the original Wide-camera preference for legacy recordings', () => {
+    const scene = createDefaultSimulationState().scene
+    const wide = scene.cameras[0]
+    scene.cameras.unshift({ ...structuredClone(wide), id: 'generic-first', presetId: 'generic-pinhole' })
+    const run: RecordedRun = { id: 'legacy', startedAt: '2026-01-01T00:00:00.000Z', events: [event('start', 'begin_arm_trial', 0, frame(scene))] }
+    expect(recordingCameraId(run)).toBe(wide.id)
+    run.cameraId = 'generic-first'
+    expect(recordingCameraId(run)).toBe('generic-first')
+  })
   it('selects the event and last render frame at a captured time', () => {
     const sceneA = createDefaultSimulationState().scene
     const sceneB = structuredClone(sceneA)

@@ -2,7 +2,6 @@ import {
   CAMERA_PRESETS,
   assertNoUnknownKeys,
   assertRecord,
-  computeProjectedCylinderAxis,
   computeSceneKinematics,
   evaluateSimulationGoal,
   ROBOT_PRESETS,
@@ -14,6 +13,7 @@ import {
 import { parseStateQuery, parseToolCommand } from './parser'
 import { WEBMCP_INPUT_SCHEMAS } from './schemas'
 import type { WebMcpExecutionOptions, WebMcpToolDefinition } from './types'
+import { captureLiveCamera, type CameraCapture } from './cameraCapture'
 
 const NEVER_ABORTED_SIGNAL = new AbortController().signal
 
@@ -174,7 +174,7 @@ function listPresetsResult(detailed: boolean) {
       ],
       limitations: [
         'one active serial robot only',
-        'ideal pinhole cameras only; observations are analytic detections, not rendered pixels',
+        'rendered ideal-pinhole camera images only; no physical camera noise or lens distortion',
         'position-only IK; end-effector orientation is unconstrained',
         'kinematic grasp only; no contact force, payload, or grasp-stability model',
         'no physical robot or backend APIs',
@@ -267,25 +267,13 @@ function simulationStateResult(store: SimulationStore, includeVisibility: boolea
   }
 }
 
-function visualClass(type: 'box' | 'sphere' | 'cylinder' | 'plane'): string {
-  if (type === 'cylinder') return 'can-like cylinder'
-  return `${type} primitive`
-}
-
 function operateActivitySummary(name: 'observe_arm_camera' | 'get_arm_telemetry', result: Record<string, unknown>): string {
   if (name === 'get_arm_telemetry') {
     const joints = Array.isArray(result.joints) ? result.joints : []
     const gripper = result.gripper as { state?: string } | undefined
     return `Read ${joints.length} joint position${joints.length === 1 ? '' : 's'} · gripper ${gripper?.state ?? 'unknown'}.`
   }
-  const detections = Array.isArray(result.detections) ? result.detections as Array<Record<string, unknown>> : []
-  if (detections.length === 0) return 'Observed 0 movable shapes in the camera frame.'
-  const primary = detections[0]
-  const center = primary.centerNormalized as number[] | undefined
-  const horizontal = !center ? 'unknown' : center[0] < 0.4 ? 'left' : center[0] > 0.6 ? 'right' : 'center'
-  const vertical = !center ? 'unknown' : center[1] < 0.4 ? 'high' : center[1] > 0.6 ? 'low' : 'middle'
-  const axis = typeof primary.longAxisAngleDeg === 'number' ? ` · axis ${primary.longAxisAngleDeg.toFixed(1)}°` : ''
-  return `Observed ${detections.length} movable shape${detections.length === 1 ? '' : 's'} · ${horizontal}/${vertical}/${String(primary.visibility ?? 'unknown')}${axis}.`
+  return 'Captured simulated camera image · no scene annotations.'
 }
 
 function operateReadDefinition(
@@ -293,7 +281,7 @@ function operateReadDefinition(
   name: 'observe_arm_camera' | 'get_arm_telemetry',
   title: string,
   description: string,
-  read: () => Record<string, unknown>,
+  read: (signal: AbortSignal) => Record<string, unknown> | Promise<Record<string, unknown>>,
 ): WebMcpToolDefinition {
   return {
     name,
@@ -307,7 +295,8 @@ function operateReadDefinition(
         assertRecord(input, 'input')
         assertNoUnknownKeys(input, [], 'input')
         requireOperateRead(store, name)
-        const result = read()
+        const result = await read(executionSignal(options))
+        throwIfAborted(options)
         store.logActivity({ source: 'webmcp', action: name, status: 'ok', summary: operateActivitySummary(name, result) })
         return result
       } catch (error) {
@@ -322,7 +311,7 @@ function operateReadDefinition(
   }
 }
 
-export function createWebMcpToolDefinitions(store: SimulationStore = simulationStore): WebMcpToolDefinition[] {
+export function createWebMcpToolDefinitions(store: SimulationStore = simulationStore, captureCamera: CameraCapture = captureLiveCamera): WebMcpToolDefinition[] {
   const mutation = (name: keyof typeof WEBMCP_INPUT_SCHEMAS, title: string, description: string): WebMcpToolDefinition => ({
     name, title, description,
     inputSchema: WEBMCP_INPUT_SCHEMAS[name],
@@ -380,29 +369,19 @@ export function createWebMcpToolDefinitions(store: SimulationStore = simulationS
     mutation('run_joint_sequence', 'Run build sequence', 'Validate and apply a kinematic joint sequence while building.'),
     mutation('save_simulation_snapshot', 'Save build snapshot', 'Save a named local scene snapshot while building.'),
     mutation('begin_arm_trial', 'Begin camera-only arm trial', 'Freeze construction and begin a repeatable trial. The agent then receives only camera observations, basic telemetry, and bounded outputs.'),
-    operateReadDefinition(store, 'observe_arm_camera', 'Observe arm camera', 'Read ideal-pinhole normalized visual detections without object IDs, world poses, distances, or goal coordinates.', () => {
+    operateReadDefinition(store, 'observe_arm_camera', 'Observe arm camera', 'Capture a JPEG image from the current trial camera. Returns content image data, not analytic detections. Inspect the returned image before choosing outputs; no object IDs, world poses, or goal overlays are included.', async (signal) => {
       const state = store.getSnapshot()
       const operation = state.operation!
       const camera = state.scene.cameras.find((candidate) => candidate.id === operation.cameraId)!
-      const computed = computeSceneKinematics(state.scene)
-      const cameraFrame = computed.cameras.find((candidate) => candidate.cameraId === operation.cameraId)!
-      const visibility = computed.cameraVisibility.find((candidate) => candidate.cameraId === operation.cameraId)!
-      const detections = visibility.objects.flatMap((report) => {
-        if (report.visibility === 'none' || !report.normalizedBounds || !report.centerNormalized) return []
-        const object = state.scene.objects.find((candidate) => candidate.id === report.objectId)!
-        if (!object || object.movable !== true) return []
-        const cylinderAxis = computeProjectedCylinderAxis(camera, cameraFrame.pose.matrix, object)
-        return [{
-          visualClass: visualClass(object.geometry.type),
-          visibility: report.visibility,
-          normalizedBounds: roundedTuple(report.normalizedBounds),
-          centerNormalized: roundedTuple(report.centerNormalized),
-          ...(cylinderAxis ? {
-            longAxisAngleDeg: rounded(cylinderAxis.longAxisAngleDeg),
-            longAxisLengthNormalized: rounded(cylinderAxis.longAxisLengthNormalized),
-          } : {}),
-        }]
-      })
+      const image = await captureCamera({ revision: state.revision, trialId: operation.trialId, cameraId: operation.cameraId, signal })
+      signal.throwIfAborted()
+      const current = store.getSnapshot()
+      if (current.revision !== state.revision || current.phase !== 'operate' || current.operation?.trialId !== operation.trialId || image.revision !== state.revision || image.trialId !== operation.trialId) {
+        throw new SimulationError('CAMERA_UNAVAILABLE', 'Scene changed during capture. Observe again; the stale image was discarded.')
+      }
+      if (!Number.isInteger(image.width) || !Number.isInteger(image.height) || image.width < 1 || image.height < 1 || image.width > 1024 || image.height > 1024 || !image.data || image.data.length > 1_500_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(image.data)) {
+        throw new SimulationError('CAMERA_UNAVAILABLE', 'Camera returned an invalid or oversized image.')
+      }
       return {
         ok: true,
         revision: state.revision,
@@ -410,12 +389,12 @@ export function createWebMcpToolDefinitions(store: SimulationStore = simulationS
         trialId: operation.trialId,
         camera: {
           model: camera.projection.model,
-          resolutionPx: [camera.projection.widthPx, camera.projection.heightPx],
+          resolutionPx: [image.width, image.height],
           fovDeg: [camera.projection.horizontalFovDeg, camera.projection.verticalFovDeg],
-          featureConvention: 'normalized image coordinates; cylinder long-axis is 0deg horizontal and 90deg vertical',
+          imageConvention: 'local +Y is image-right; +Z is image-up',
         },
-        detections,
-        source: 'Analytic ideal-pinhole projection of simulated primitives; not rendered pixels, learned perception, or physical camera data.',
+        content: [{ type: 'image', mimeType: 'image/jpeg', data: image.data }],
+        source: 'Rendered simulated camera pixels with depth occlusion; not a physical camera. No analytic object detections or goal annotations.',
       }
     }),
     operateReadDefinition(store, 'get_arm_telemetry', 'Get arm telemetry', 'Read joint and gripper telemetry without end-effector, object, goal, or world coordinates.', () => {

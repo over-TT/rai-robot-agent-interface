@@ -1,6 +1,7 @@
 import { computeForwardKinematics } from './kinematics'
 import { solvePositionIk } from './ik'
 import { cloneSerializable } from './math'
+import { settleReleasedObject } from './settling'
 import { getCameraPreset, getRobotPreset, ROBOT_BASE_HEIGHT_M } from './presets'
 import {
   createKinematicGrasp,
@@ -551,7 +552,7 @@ export function executeSimulationCommand(
     return {
       state: next,
       result: success(next, command, `Trial started · camera ready${randomized ? ' · can placement randomized' : ''}.`, [], [
-        'The agent receives ideal-pinhole visual detections rather than rendered camera pixels or physical sensor data.',
+        'Camera observations contain rendered simulator images, not physical sensor data.',
       ], { phase: next.phase, trialId: next.operation!.trialId, gripper: { state: 'open', holding: false } }),
     }
   }
@@ -574,7 +575,9 @@ export function executeSimulationCommand(
     syncGraspedObjectPose(scene)
     let gripperState = current.operation!.gripper
     if (command.gripper === 'open') {
+      const releasedId = scene.grasp?.objectId
       scene.grasp = null
+      if (releasedId) settleReleasedObject(scene, releasedId)
       gripperState = 'open'
     } else if (command.gripper === 'close') {
       if (!scene.grasp) {
@@ -602,7 +605,7 @@ export function executeSimulationCommand(
     return {
       state: next,
       result: success(next, command, `${outputSummary}.`, changedJointIds, [
-        'Kinematic simulation only; no motor torque, collision force, or grasp stability is modeled.',
+        'Kinematic joints and instant vertical release settling only; no motor torque, collision forces, friction, or grasp stability.',
       ], {
         phase: next.phase,
         appliedJointTargets: targets.map((target) => ({ jointId: target.jointId, value: target.value })),
@@ -720,11 +723,12 @@ export function executeSimulationCommand(
       if (!scene.grasp) throw new SimulationError('CONFLICT', 'No object is currently grasped.')
       const objectId = scene.grasp.objectId
       scene.grasp = null
+      settleReleasedObject(scene, objectId)
       const next = commitScene(current, scene, `Release ${objectId}`)
       return {
         state: next,
-        result: success(next, command, `Released ${objectId}; it remains frozen at its current simulated pose.`, [objectId], [
-          'Gravity and post-release dynamics are not simulated.',
+        result: success(next, command, `Released ${objectId}; settled vertically onto the support beneath it.`, [objectId], [
+          'Instant support settling approximation only; no falling animation, friction, bounce, or angular dynamics.',
         ], { goalEvaluation: evaluateSimulationGoal(scene) }),
       }
     }

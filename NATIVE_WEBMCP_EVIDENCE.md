@@ -1,6 +1,21 @@
 # RAI native WebMCP evidence
 
-**Status:** Local native-WebMCP trials are recorded below. Public ChatGPT Sites hosting and anonymous HTTP access were verified September 3, 2026; a full hosted trial and submission video remain pending.
+**Status:** Evidence is dated by build below. Earlier analytic-camera trials are historical and do not prove the new rendered-image implementation. Public hosting checks and local browser experiments are separate.
+
+## September 4 reliability update
+
+The camera contract now returns rendered JPEG pixels, not analytic detections. Release now performs instant vertical support settling. Neither change is a physical dynamics solver.
+
+Local browser checks used the page's native WebMCP tools:
+
+- **Camera / bounded output:** 39.8 seconds, seven events. Observed a 640 × 343 JPEG; read joint telemetry; changed base and wrist targets and closed the empty gripper; inspected a second image showing the changed viewpoint; opened and ended. No task success was claimed.
+- **Controlled release fixture:** 20.5 seconds, six events. Build preparation placed a 20 mm-radius sphere at the gripper. Operate close reported holding, a wrist output carried it, open released it, and the image showed it on the bench. Only after End, a Build audit confirmed centre Z = 0.02 m and no grasp. This was a prepared mechanics check, not autonomous visual acquisition or a can-tip success.
+- **Replay:** original elapsed timestamps, 1× playback, pause held at 6.9 seconds, Next advanced to the next real event at 12.29 seconds, switching attempts reset the displayed timeline, and all four saved local attempts survived reload.
+- **Browser errors:** no error-level console entries after reload. The dependency's `THREE.Clock` deprecation warning remains.
+
+Regression tests cover truncated-frame anchors, storage conflicts and quota failure, default and 32-object six-run JSON round trips, legacy camera choice, stale/aborted camera capture, image-size limits, and release supports. The complete gate is `npm run check`; counts in older sections are historical.
+
+Recordings are browser-local, not shared globally with every visitor. The image-response integration was explicitly decoded and inspected in the compatible browser host; other hosts must support displaying image content.
 
 ## September 3 camera and replay update
 

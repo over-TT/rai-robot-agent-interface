@@ -99,7 +99,7 @@ export function SensorViewport({
         <color attach="background" args={['#0b0d10']} />
         <ambientLight intensity={1.45} />
         <directionalLight position={[0.7, 1.2, 0.6]} intensity={2.4} />
-        <SceneContent scene={scene} computed={computed} gripperClosed={gripperClosed} showCameraBodies={false} showFrustums={false} />
+        <SceneContent scene={scene} computed={computed} gripperClosed={gripperClosed} showCameraBodies={false} showFrustums={false} showAnnotations={false} />
         <SensorCamera cameraSensor={cameraSensor} frame={frame} />
       </Canvas>
       <div className="sensor-reticle" aria-hidden="true"><i /><b /></div>

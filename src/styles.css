@@ -3408,3 +3408,7 @@ button:disabled {
   }
 
 }
+/* Recording selection and persistent save warnings stay compact and visible. */
+.run-picker { display: flex; align-items: center; gap: 10px; padding: 8px 12px; font-size: 14px; }
+.run-picker select { min-width: 0; max-width: 100%; flex: 1; background: #20252b; color: #e3e9ef; border: 1px solid #404b58; border-radius: 5px; padding: 7px; }
+.storage-warning { position: fixed; z-index: 100; left: 12px; right: 12px; bottom: 12px; padding: 12px 16px; border: 1px solid #aa8340; border-radius: 8px; background: #352b19; color: #fff0cd; font-size: 14px; }

@@ -1,6 +1,7 @@
 import { simulationStore, type SimulationStore } from '../domain'
 import { createWebMcpToolDefinitions } from './tools'
 import type { WebMcpDocument, WebMcpModelContext, WebMcpRegistration } from './types'
+import type { CameraCapture } from './cameraCapture'
 
 const activeRegistrations = new WeakMap<object, AbortController>()
 
@@ -8,6 +9,7 @@ export interface InstallWebMcpOptions {
   store?: SimulationStore
   document?: WebMcpDocument
   exposedTo?: string[]
+  captureCamera?: CameraCapture
 }
 
 function currentDocument(): WebMcpDocument | undefined {
@@ -21,7 +23,7 @@ function currentDocument(): WebMcpDocument | undefined {
 export function installWebMcpTools(options: InstallWebMcpOptions = {}): WebMcpRegistration {
   const store = options.store ?? simulationStore
   const modelContext = (options.document ?? currentDocument())?.modelContext
-  const tools = createWebMcpToolDefinitions(store)
+  const tools = createWebMcpToolDefinitions(store, options.captureCamera)
   if (!modelContext || typeof modelContext.registerTool !== 'function') {
     return { supported: false, toolNames: [], ready: Promise.resolve(), dispose() {} }
   }

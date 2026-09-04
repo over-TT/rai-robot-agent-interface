@@ -23,7 +23,8 @@ import {
 } from './validation'
 
 export const DEFAULT_STORAGE_KEY = 'webmcp-robot-sim/state/v2-arm-only'
-export const MAX_SIMULATION_IMPORT_BYTES = 5 * 1024 * 1024
+export const MAX_SIMULATION_IMPORT_BYTES = 64 * 1024 * 1024
+export const SIMULATION_IMPORT_LIMIT_MESSAGE = 'Imported simulation JSON exceeds the 64 MiB import limit.'
 
 const MAX_ACTIVITY = 120
 const MAX_REQUEST_CACHE = 100
@@ -126,6 +127,7 @@ function normalizeAndValidateStoredState(value: unknown): SimulationState | null
 
 export interface SimulationStore {
   getSnapshot(): SimulationState
+  getPersistenceStatus(): 'saved' | 'unavailable' | 'error' | 'conflict'
   subscribe(listener: () => void): () => void
   dispatch(command: SimulationCommand, options?: DispatchOptions): CommandResult
   dispatchAsync(command: SimulationCommand, options?: DispatchOptions): Promise<CommandResult>
@@ -163,10 +165,13 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
   const now = options.now ?? (() => new Date().toISOString())
   const listeners = new Set<() => void>()
   const requestCache = new Map<string, RequestCacheEntry>()
+  let lastStoredValue: string | null = null
+  let persistenceStatus: 'saved' | 'unavailable' | 'error' | 'conflict' = storage ? 'saved' : 'unavailable'
   let state = normalizeStoredExtensions(cloneSerializable(options.initialState ?? createDefaultSimulationState()))
   if (!options.initialState && storage) {
     try {
       const serialized = storage.getItem(storageKey)
+      lastStoredValue = serialized
       if (serialized) {
         const candidate: unknown = JSON.parse(serialized)
         const normalized = normalizeAndValidateStoredState(candidate)
@@ -181,9 +186,17 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
   function persist(): boolean {
     if (!storage) return false
     try {
-      storage.setItem(storageKey, JSON.stringify(state))
+      if (storage.getItem(storageKey) !== lastStoredValue) {
+        persistenceStatus = 'conflict'
+        return false
+      }
+      const serialized = JSON.stringify(state)
+      storage.setItem(storageKey, serialized)
+      lastStoredValue = serialized
+      persistenceStatus = 'saved'
       return true
     } catch {
+      persistenceStatus = 'error'
       return false
     }
   }
@@ -208,7 +221,13 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
 
   function boundRunEvents(events: RecordedRunEvent[]): RecordedRunEvent[] {
     if (events.length <= MAX_RECORDED_RUN_EVENTS) return events
-    return [events[0], ...events.slice(-(MAX_RECORDED_RUN_EVENTS - 1))]
+    // Keep a genuine frame-bearing event before the retained tail. Otherwise
+    // a long observation-only stretch incorrectly replays the initial pose.
+    const tailStart = events.length - (MAX_RECORDED_RUN_EVENTS - 2)
+    const anchor = events.slice(1, tailStart).reverse().find((event) => event.frame)
+    return anchor
+      ? [events[0], anchor, ...events.slice(tailStart)]
+      : [events[0], ...events.slice(-(MAX_RECORDED_RUN_EVENTS - 1))]
   }
 
   function appendRecordedEvent(
@@ -226,6 +245,7 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
       const recording: RecordedRun = {
         id: state.operation?.trialId ?? `recording-${activity.id}`,
         startedAt: activity.at,
+        cameraId: state.operation?.cameraId,
         events: [event],
       }
       return [...recordings, recording].slice(-MAX_RECORDED_RUNS)
@@ -329,6 +349,7 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
 
   return {
     getSnapshot: () => state,
+    getPersistenceStatus: () => persistenceStatus,
     subscribe(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
@@ -337,10 +358,10 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
     dispatchAsync,
     logActivity: appendActivity,
     getComputedState: () => computeSceneKinematics(state.scene),
-    exportState: () => JSON.stringify(state, null, 2),
+    exportState: () => JSON.stringify(state),
     importState(serialized) {
       if (new TextEncoder().encode(serialized).byteLength > MAX_SIMULATION_IMPORT_BYTES) {
-        throw new SimulationError('LIMIT_EXCEEDED', 'Imported simulation JSON exceeds the 5 MiB import limit.')
+        throw new SimulationError('LIMIT_EXCEEDED', SIMULATION_IMPORT_LIMIT_MESSAGE)
       }
       let candidate: unknown
       try { candidate = JSON.parse(serialized) } catch {
@@ -356,7 +377,12 @@ export function createSimulationStore(options: CreateStoreOptions = {}): Simulat
       return { persisted }
     },
     clearPersistence() {
-      try { storage?.removeItem(storageKey) } catch { /* best effort */ }
+      try {
+        if (storage && storage.getItem(storageKey) === lastStoredValue) {
+          storage.removeItem(storageKey)
+          lastStoredValue = null
+        }
+      } catch { persistenceStatus = 'error' }
     },
   }
 }

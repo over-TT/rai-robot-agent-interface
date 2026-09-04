@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createSimulationStore, cylinderTiltDeg, evaluateSimulationGoal } from '../domain'
-import { createWebMcpToolDefinitions, WEBMCP_INPUT_SCHEMAS, WEBMCP_TOOL_NAMES } from './index'
+import { createWebMcpToolDefinitions as definitions, WEBMCP_INPUT_SCHEMAS, WEBMCP_TOOL_NAMES } from './index'
+
+// Fake image bytes test dispatch contracts only, never autonomous visual success.
+const createWebMcpToolDefinitions = (store: ReturnType<typeof createSimulationStore>) => definitions(store, async (request) => ({ revision: request.revision, trialId: request.trialId, width: 640, height: 344, data: '/9j/AA==' }))
 
 function signal() { return new AbortController().signal }
 
@@ -88,13 +91,8 @@ describe('WebMCP arm tool definitions', () => {
     }, { signal: signal() }) as Record<string, any>
     const second = await tools.get('observe_arm_camera')!.execute({}, { signal: signal() }) as Record<string, any>
 
-    expect(first).toMatchObject({ ok: true, phase: 'operate', detections: expect.any(Array) })
-    expect(first.detections.length).toBeGreaterThan(0)
-    expect(first.detections[0]).toMatchObject({
-      visualClass: 'can-like cylinder',
-      longAxisAngleDeg: expect.any(Number),
-      longAxisLengthNormalized: expect.any(Number),
-    })
+    expect(first).toMatchObject({ ok: true, phase: 'operate', content: [{ type: 'image', mimeType: 'image/jpeg', data: '/9j/AA==' }] })
+    expect(first).not.toHaveProperty('detections')
     expect(telemetry).toMatchObject({
       ok: true, joints: expect.any(Array), gripper: { state: 'open', holding: false },
     })
@@ -109,14 +107,14 @@ describe('WebMCP arm tool definitions', () => {
     expect(allKeys(output).filter((key) => privilegedKeys.includes(key))).toEqual([])
   })
 
-  it('tips the bundled can in a blind trial using only camera, telemetry, and bounded outputs', async () => {
+  it('regresses the deterministic grasp/rotate/release tool route with a mocked image provider', async () => {
     const store = createSimulationStore({ storage: null })
     const tools = new Map(createWebMcpToolDefinitions(store).map((tool) => [tool.name, tool]))
     await tools.get('begin_arm_trial')!.execute({ randomizeCan: false }, { signal: signal() })
     const firstObservation = await tools.get('observe_arm_camera')!.execute({}, { signal: signal() }) as Record<string, any>
     const telemetry = await tools.get('get_arm_telemetry')!.execute({}, { signal: signal() }) as Record<string, any>
 
-    expect(firstObservation.detections.length).toBeGreaterThan(0)
+    expect(firstObservation.content).toHaveLength(1)
     expect(telemetry.joints).toHaveLength(4)
     await tools.get('set_arm_outputs')!.execute({
       jointTargets: [
@@ -146,9 +144,7 @@ describe('WebMCP arm tool definitions', () => {
       ],
     }, { signal: signal() })
     const tippedObservation = await tools.get('observe_arm_camera')!.execute({}, { signal: signal() }) as Record<string, any>
-    const tippedDetection = tippedObservation.detections[0]
-    expect(tippedDetection).toMatchObject({ visibility: 'full', longAxisAngleDeg: expect.any(Number) })
-    expect(Math.abs((tippedDetection.longAxisAngleDeg as number) - 90)).toBeGreaterThan(45)
+    expect(tippedObservation.content[0].type).toBe('image')
     await tools.get('end_arm_trial')!.execute({}, { signal: signal() })
     const can = store.getSnapshot().scene.objects.find((object) => object.id === 'arm-101-can')!
     expect(opened).toMatchObject({ data: { gripper: { state: 'open', holding: false } } })

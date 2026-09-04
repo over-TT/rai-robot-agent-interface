@@ -39,6 +39,7 @@ export type SimulationErrorCode =
   | 'IK_DID_NOT_CONVERGE'
   | 'GRASP_OUT_OF_RANGE'
   | 'ABORTED'
+  | 'CAMERA_UNAVAILABLE'
 
 export class SimulationError extends Error {
   readonly code: SimulationErrorCode
@@ -514,7 +515,8 @@ export function validateStoredState(value: unknown): value is SimulationState {
     for (const [recordingIndex, recording] of value.recordings.entries()) {
       const label = `state.recordings[${recordingIndex}]`
       assertRecord(recording, label)
-      assertNoUnknownKeys(recording, ['id', 'startedAt', 'finishedAt', 'durationMs', 'events'], label)
+      assertNoUnknownKeys(recording, ['id', 'cameraId', 'startedAt', 'finishedAt', 'durationMs', 'events'], label)
+      if (recording.cameraId !== undefined) validateId(recording.cameraId, `${label}.cameraId`)
       validateId(recording.id, `${label}.id`)
       if (recordingIds.has(recording.id)) return false
       recordingIds.add(recording.id)

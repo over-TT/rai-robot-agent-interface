@@ -6,6 +6,14 @@ const MAX_PERSPECTIVE_ASPECT = 100
 // Published sensor coordinates use local +Y as image-right; Three lookAt uses -Y.
 export const SENSOR_HORIZONTAL_SCALE = -1
 
+export function sensorCaptureSize(aspect: number) {
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
+  return {
+    width: Math.max(1, Math.round(Math.min(640, 640 * safeAspect))),
+    height: Math.max(1, Math.round(Math.min(640, 640 / safeAspect))),
+  }
+}
+
 /** Contain the complete sensor image without stretching or cropping it. */
 export function fitSensorFrame(width: number, height: number, aspect: number) {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1

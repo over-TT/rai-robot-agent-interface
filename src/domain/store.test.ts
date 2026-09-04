@@ -204,7 +204,7 @@ describe('simulation store', () => {
     const store = createSimulationStore({ storage: null })
     const originalState = store.getSnapshot()
 
-    expect(() => store.importState(' '.repeat(MAX_SIMULATION_IMPORT_BYTES + 1))).toThrow(/exceeds the 5 MiB import limit/)
+    expect(() => store.importState(' '.repeat(MAX_SIMULATION_IMPORT_BYTES + 1))).toThrow(/exceeds the 64 MiB import limit/)
     expect(store.getSnapshot()).toBe(originalState)
   })
 

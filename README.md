@@ -24,14 +24,14 @@ Use the controls yourself, or choose **Set up with AI** to bring a compatible We
 
 ![Actual recorded WebMCP attempt](docs/media/agent-run.jpg)
 
-**Run** shows the recorded attempt, not a canned animation. Replay preserves the original wall-clock pauses at 1×. Click a step or use **Next** to inspect a moment. The camera inset follows the recorded arm pose. Recordings stay in that browser; a fresh browser starts empty.
+**Run** shows the recorded attempt, not a canned animation. Pick a saved attempt, then replay the original wall-clock pauses at 1×. Click a step or use **Next** to inspect a moment. The camera inset follows that attempt's recorded camera and arm pose. Recordings stay in that browser; a fresh browser starts empty. Export JSON to keep a copy, especially if a storage warning appears.
 
 ## How it works
 
 ```mermaid
 flowchart LR
     BUILD["Build<br/>Arm · camera · scene"] --> START["Start run<br/>Scene editing locks"]
-    START --> OBSERVE["Observe<br/>Camera-frame data"]
+    START --> OBSERVE["Observe<br/>Rendered camera image"]
     OBSERVE --> SENSE["Read joints<br/>and gripper"]
     SENSE --> ACT["Set joint targets<br/>or gripper output"]
     ACT --> OBSERVE
@@ -43,7 +43,7 @@ The page exposes 19 WebMCP tools. During a run, only these four work:
 
 | Tool | What the agent gets or does |
 | --- | --- |
-| `observe_arm_camera` | Structured camera-frame observations; no world coordinates |
+| `observe_arm_camera` | Rendered JPEG camera image; no detections or world coordinates |
 | `get_arm_telemetry` | Joint positions, limits, and gripper state |
 | `set_arm_outputs` | Bounded joint targets and open/close gripper commands |
 | `end_arm_trial` | Ends the attempt and unlocks Build mode |
@@ -91,9 +91,9 @@ Ordinary ChatGPT web chat is not automatically connected to this page. Check the
 
 RAI is a small research workbench, not an Isaac Sim replacement.
 
-- Motion uses deterministic kinematics. There is no gravity, contact-force, friction, torque, or grasp-stability solver.
-- The gripper captures nearby eligible primitives within a fixed 45 mm surface-clearance envelope. It carries them rigidly; released objects remain at their simulated pose.
-- The agent receives analytic ideal-pinhole detections, not rendered pixels or learned vision. The visible camera follows the published +Y-image-right convention; it is not a physical camera stream.
+- Motion uses deterministic kinematics. Release uses instant vertical support settling, not a gravity, contact-force, friction, torque, or grasp-stability solver.
+- The gripper captures nearby eligible primitives within a fixed 45 mm surface-clearance envelope and carries them rigidly. Released objects keep their orientation and settle onto a horizontal fixed support beneath their centre, or the floor. There is no falling animation, bounce, rolling, or angular settling.
+- The agent receives rendered ideal-pinhole JPEG images with depth occlusion and no goal annotations or analytic detections. The host must support displaying image content. This is not a physical camera stream or calibrated optics.
 - Replay stores tool-event timing and scene snapshots, not video or hidden reasoning. Up to six runs and 120 events per run are retained locally.
 - No Raspberry Pi connection or real servo motion happens here.
 
